@@ -1,0 +1,1374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>PokéBattle Predictor</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0F1320;--bg2:#161D30;--bg3:#1C2438;--bg4:#212840;
+  --r:#E8192C;--r2:#FF3347;--rd:rgba(232,25,44,.12);
+  --b:#3B5BDB;--b2:#5C7CFA;--bd:rgba(59,91,219,.12);
+  --y:#F5B800;--yl:#FFD050;--g:#2FB67A;--o:#E8741A;
+  --t1:#DDE2F2;--t2:#8A95B5;--t3:#454F70;--t4:#2A3255;
+  --sep:rgba(255,255,255,.07);
+  --fh:'Press Start 2P',monospace;--fb:'VT323',monospace;
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--fb);background:var(--bg);color:var(--t1);font-size:19px;line-height:1.5;min-height:100vh;
+  background-image:radial-gradient(rgba(59,91,219,.04) 1px,transparent 1px);background-size:28px 28px}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--t4)}
+img{image-rendering:pixelated}
+
+/* ── HEADER ─────────────────────────────────── */
+.hdr{position:sticky;top:0;z-index:200;background:rgba(15,19,32,.96);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--sep);padding:8px 16px;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.hdr-l{display:flex;align-items:center;gap:10px}
+.ball{width:24px;height:24px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(180deg,#eee 46%,#111 46% 54%,var(--r) 54%);
+  border:1.5px solid rgba(255,255,255,.18);position:relative}
+.ball::after{content:'';position:absolute;width:5px;height:5px;background:white;
+  border:1px solid rgba(0,0,0,.3);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%)}
+.brand-name{font-family:var(--fh);font-size:clamp(8px,1.8vw,11px);color:var(--yl);letter-spacing:.5px}
+.brand-sub{font-family:var(--fb);font-size:13px;color:var(--t3);display:none}
+@media(min-width:480px){.brand-sub{display:block}}
+.hdr-r{display:flex;align-items:center;gap:6px}
+.fmt-sel{font-family:var(--fb);font-size:16px;padding:5px 8px;background:var(--bg3);color:var(--t2);border:none;outline:none;cursor:pointer}
+.tab-btn{font-family:var(--fh);font-size:clamp(6px,1.4vw,8px);padding:7px 12px;background:transparent;
+  color:var(--t3);border:none;cursor:pointer;letter-spacing:.3px;transition:color .15s;
+  border-bottom:2px solid transparent;white-space:nowrap}
+.tab-btn:hover{color:var(--t2)}
+.tab-btn.active{color:var(--yl);border-bottom-color:var(--y)}
+
+/* ── LAYOUT ──────────────────────────────────── */
+.main{max-width:1120px;margin:0 auto;padding:14px 12px 60px}
+.tab-pane{display:none}.tab-pane.active{display:block}
+
+/* ── INTRO BAR ───────────────────────────────── */
+.intro{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;
+  background:var(--bg2);border-left:3px solid var(--y);margin-bottom:14px}
+.intro-icon{font-family:var(--fh);font-size:10px;color:var(--y);flex-shrink:0;padding-top:2px}
+.intro-body{font-size:17px;color:var(--t2);line-height:1.45}
+.intro-body strong{color:var(--t1)}
+.ftags{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
+.ftag{font-family:var(--fh);font-size:clamp(5px,1.1vw,6px);padding:3px 7px;background:rgba(59,91,219,.18);color:var(--b2)}
+
+/* ── QUICK MATCH ─────────────────────────────── */
+.qrow{display:flex;align-items:center;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.qlbl{font-family:var(--fh);font-size:clamp(6px,1.3vw,8px);color:var(--t3);flex-shrink:0}
+.qbtn{font-family:var(--fb);font-size:17px;padding:5px 12px;background:var(--bg2);
+  color:var(--t2);border:none;cursor:pointer;transition:all .12s;white-space:nowrap;min-height:36px}
+.qbtn:hover{background:var(--bg3);color:var(--yl)}
+.qtype{font-family:var(--fh);font-size:5px;padding:3px 5px;color:white;letter-spacing:.3px;margin-right:5px;vertical-align:middle;display:inline-block}
+
+/* ── FIELD CONDITIONS ────────────────────────── */
+.field-toggle{font-family:var(--fh);font-size:clamp(6px,1.2vw,7px);padding:7px 12px;
+  background:var(--bg2);color:var(--t2);border:none;cursor:pointer;
+  display:flex;align-items:center;gap:7px;width:100%;text-align:left;margin-bottom:2px;letter-spacing:.3px}
+.field-toggle-arrow{transition:transform .2s;font-size:8px}
+.field-toggle-arrow.open{transform:rotate(90deg)}
+.field-strip{background:var(--bg2);padding:10px 14px 12px;margin-bottom:14px;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;display:none}
+.field-strip.open{display:grid}
+.f-group{display:flex;flex-direction:column;gap:4px}
+.f-lbl{font-family:var(--fh);font-size:clamp(5.5px,1.1vw,6.5px);color:var(--t3);letter-spacing:.3px}
+.f-sel{font-family:var(--fb);font-size:17px;padding:5px 8px;background:var(--bg3);color:var(--t1);border:none;outline:none;cursor:pointer;min-height:36px}
+.f-sel option{background:var(--bg2)}
+
+/* ── SECTION LABEL ───────────────────────────── */
+.slbl{font-family:var(--fh);font-size:clamp(6px,1.3vw,8px);color:var(--t3);letter-spacing:.5px;
+  display:flex;align-items:center;gap:8px;margin:18px 0 10px}
+.slbl::after{content:'';flex:1;height:1px;background:var(--sep)}
+
+/* ── ARENA ───────────────────────────────────── */
+.arena{display:grid;grid-template-columns:1fr 68px 1fr;gap:10px;align-items:start;margin-bottom:0}
+@media(max-width:560px){.arena{grid-template-columns:1fr;gap:8px}}
+
+/* ── FIGHTER PANEL ───────────────────────────── */
+.fighter{background:var(--bg2);transition:background .2s}
+.fighter.p1a{background:linear-gradient(160deg,rgba(232,25,44,.07) 0%,var(--bg2) 40%)}
+.fighter.p2a{background:linear-gradient(160deg,rgba(59,91,219,.07) 0%,var(--bg2) 40%)}
+.f-top{padding:10px 12px 8px;display:flex;align-items:center;justify-content:space-between}
+.f-player{font-family:var(--fh);font-size:clamp(7px,1.5vw,9px);letter-spacing:.4px}
+.fp1{color:var(--r)}.fp2{color:var(--b2)}
+.f-badges{display:flex;align-items:center;gap:5px}
+.tier-tag{font-family:var(--fh);font-size:clamp(5.5px,1vw,7px);padding:2px 7px;color:white;letter-spacing:.3px}
+.sr-tag{font-family:var(--fh);font-size:clamp(5px,1vw,6.5px);padding:2px 6px;background:rgba(232,116,26,.2);color:var(--o);display:none}
+
+/* ── POKEMON GRID PICKER ─────────────────────── */
+.picker-btn{
+  width:calc(100% - 24px);margin:0 12px 8px;
+  font-family:var(--fb);font-size:19px;padding:10px 12px;
+  background:var(--bg3);color:var(--t2);border:none;cursor:pointer;
+  display:flex;align-items:center;gap:8px;transition:all .12s;min-height:44px;
+}
+.picker-btn:hover{background:var(--bg4);color:var(--t1)}
+.picker-btn img{width:32px;height:32px;object-fit:contain;flex-shrink:0}
+.picker-btn-name{flex:1;text-align:left}
+.picker-btn-arrow{font-family:var(--fh);font-size:7px;color:var(--t3)}
+
+/* ── GRID PICKER MODAL ───────────────────────── */
+.modal-overlay{
+  display:none;position:fixed;inset:0;z-index:500;
+  background:rgba(5,8,18,.85);backdrop-filter:blur(4px);
+  overflow-y:auto;padding:12px;
+}
+.modal-overlay.open{display:flex;align-items:flex-start;justify-content:center}
+.modal-box{
+  background:var(--bg2);width:100%;max-width:760px;
+  margin:0 auto;padding:0;overflow:hidden;
+  animation:fadeUp .18s ease;
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+.modal-head{
+  padding:10px 14px;border-bottom:1px solid var(--sep);
+  display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  background:var(--bg3);
+}
+.modal-title{font-family:var(--fh);font-size:clamp(7px,1.5vw,9px);color:var(--t1);letter-spacing:.4px}
+.modal-close{font-family:var(--fh);font-size:8px;padding:6px 11px;background:transparent;
+  color:var(--t2);border:none;cursor:pointer;min-height:36px;min-width:36px}
+.modal-close:hover{color:var(--t1)}
+
+.modal-search{
+  padding:8px 12px;border-bottom:1px solid var(--sep);
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+}
+.search-input{
+  flex:1;min-width:160px;font-family:var(--fb);font-size:19px;padding:7px 10px;
+  background:var(--bg4);color:var(--t1);border:none;outline:none;
+  caret-color:var(--yl);min-height:40px;
+}
+.search-input::placeholder{color:var(--t3)}
+
+.gen-filters{display:flex;flex-wrap:wrap;gap:4px}
+.gen-btn{font-family:var(--fh);font-size:clamp(5.5px,1.1vw,6.5px);padding:5px 9px;
+  background:var(--bg4);color:var(--t2);border:none;cursor:pointer;transition:all .1s;min-height:32px}
+.gen-btn:hover,.gen-btn.on{background:var(--b);color:white}
+
+.modal-grid{
+  display:grid;
+  grid-template-columns:repeat(8,1fr);
+  gap:2px;padding:8px;
+  max-height:58vh;overflow-y:auto;
+}
+@media(max-width:560px){.modal-grid{grid-template-columns:repeat(4,1fr)}}
+@media(min-width:561px) and (max-width:760px){.modal-grid{grid-template-columns:repeat(6,1fr)}}
+
+.poke-cell{
+  display:flex;flex-direction:column;align-items:center;
+  padding:5px 2px 4px;cursor:pointer;transition:background .1s;
+  border:1.5px solid transparent;gap:2px;
+}
+.poke-cell:hover{background:var(--bg3);border-color:var(--b)}
+.poke-cell.selected{background:rgba(59,91,219,.15);border-color:var(--b2)}
+.poke-cell-sprite{width:40px;height:40px;flex-shrink:0}
+.poke-cell-name{font-family:var(--fh);font-size:4.5px;color:var(--t2);text-align:center;
+  margin-top:2px;letter-spacing:.2px;line-height:1.4;word-break:break-word}
+.poke-cell-id{font-family:var(--fh);font-size:4px;color:var(--t4);text-align:center}
+.poke-cell-types{display:flex;gap:2px;margin-top:2px;justify-content:center}
+.poke-cell-type{font-family:var(--fh);font-size:3.5px;padding:1px 3px;color:white}
+.poke-cell-empty{font-family:var(--fh);font-size:6px;color:var(--t3);padding:20px;text-align:center;grid-column:1/-1}
+
+/* ── SPRITE DISPLAY ──────────────────────────── */
+.sprite-z{
+  margin:0 12px 8px;height:120px;background:var(--bg3);
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;position:relative;overflow:hidden;transition:background .3s;
+}
+.sprite-glow{position:absolute;inset:0;opacity:.1}
+.sprite-img{width:96px;height:96px;object-fit:contain;image-rendering:pixelated;z-index:1;position:relative}
+.sprite-empty{display:flex;flex-direction:column;align-items:center;gap:7px;opacity:.22}
+.se-ball{width:28px;height:28px;border-radius:50%;border:2px solid #555;background:linear-gradient(180deg,#666 46%,#111 46% 54%,#444 53%)}
+.se-lbl{font-family:var(--fh);font-size:6px;color:var(--t4);letter-spacing:.3px}
+.sprite-name-tag{position:absolute;bottom:0;left:0;right:0;font-family:var(--fh);font-size:6px;
+  text-align:center;padding:3px;background:rgba(0,0,0,.45);color:var(--t1);z-index:2;letter-spacing:.5px}
+
+/* USAGE + TYPES */
+.usage-bar{display:flex;align-items:center;gap:8px;padding:4px 12px;background:rgba(0,0,0,.18)}
+.usg-lbl{font-family:var(--fh);font-size:clamp(5px,1vw,6px);color:var(--t3);flex-shrink:0}
+.usg-trk{flex:1;height:4px;background:var(--bg4);overflow:hidden}
+.usg-fill{height:100%;background:var(--g)}
+.usg-pct{font-family:var(--fh);font-size:clamp(5px,1vw,6px);color:var(--t3);width:26px;text-align:right}
+.types-row{padding:6px 12px;display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.type-tag{font-family:var(--fh);font-size:clamp(5.5px,1vw,6.5px);padding:3px 8px;color:white;letter-spacing:.4px}
+.ab-chip{font-family:var(--fb);font-size:15px;padding:2px 7px;background:var(--bg3);color:var(--t3)}
+
+/* WEAKNESSES */
+.weak-row{padding:2px 12px 8px}
+.weak-lbl{font-family:var(--fh);font-size:clamp(5px,1vw,6px);color:var(--t3);margin-bottom:4px;letter-spacing:.3px}
+.weak-chips{display:flex;flex-wrap:wrap;gap:3px}
+.wc{font-family:var(--fh);font-size:clamp(4.5px,.9vw,5.5px);padding:2px 6px;color:white;cursor:default;transition:transform .1s}
+.wc:hover{transform:scale(1.1)}
+.wc.res{opacity:.4;background:var(--bg4)!important;color:var(--t3)}
+.wc.imm{opacity:.3;background:var(--bg4)!important;color:var(--t4)}
+.f-div{height:1px;background:var(--sep);margin:0 12px}
+
+/* EV PRESETS */
+.ev-sec{padding:8px 12px 2px}
+.ev-lbl{font-family:var(--fh);font-size:clamp(5.5px,1vw,6.5px);color:var(--t3);margin-bottom:5px;letter-spacing:.3px}
+.ev-presets{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:9px}
+.ev-btn{font-family:var(--fb);font-size:17px;padding:5px 11px;background:var(--bg3);
+  color:var(--t2);border:none;cursor:pointer;min-height:36px;transition:all .1s}
+.ev-btn:hover,.ev-btn.on{background:var(--b);color:white}
+.cfg-pair{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.cfg-g{display:flex;flex-direction:column;gap:4px}
+.cfg-lbl{font-family:var(--fh);font-size:clamp(5px,1vw,6px);color:var(--t3);letter-spacing:.3px}
+.cfg-sel{font-family:var(--fb);font-size:16px;padding:5px 22px 5px 7px;background:var(--bg3);
+  color:var(--t1);border:none;outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%238A95B5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 6px center;min-height:36px}
+.cfg-sel option{background:var(--bg2)}
+
+/* STAT BARS */
+.stats-sec{padding:8px 12px 12px}
+.stats-lbl{font-family:var(--fh);font-size:clamp(5px,1vw,6px);color:var(--t3);margin-bottom:7px;letter-spacing:.3px}
+.stat-r{display:grid;grid-template-columns:32px 1fr 40px;align-items:center;gap:5px;margin-bottom:6px}
+.stat-k{font-family:var(--fh);font-size:clamp(5px,.9vw,5.5px);text-align:right;color:var(--t3)}
+.stat-trk{height:8px;background:var(--bg4);overflow:hidden}
+.stat-fill{height:100%;transition:width .4s ease}
+.stat-v{font-family:var(--fb);font-size:16px;width:40px;text-align:center;padding:1px;
+  background:var(--bg3);color:var(--t1);border:none;outline:none;min-height:32px}
+.stat-v:focus{background:var(--bg4);color:var(--yl)}
+.stat-v.up{color:var(--g)}.stat-v.dn{color:var(--r)}
+
+/* ── VS COLUMN ───────────────────────────────── */
+.vs-col{display:flex;flex-direction:column;align-items:center;gap:8px;padding-top:40px}
+@media(max-width:560px){.vs-col{flex-direction:row;justify-content:center;padding-top:0;flex-wrap:wrap;gap:8px}}
+.vs-word{font-family:var(--fh);font-size:16px;color:var(--r);opacity:.8}
+.spd-pill{background:var(--bg2);padding:7px 5px;width:100%;text-align:center}
+@media(max-width:560px){.spd-pill{width:auto;padding:7px 14px}}
+.spd-lbl{font-family:var(--fh);font-size:clamp(5px,1vw,5.5px);color:var(--t3);margin-bottom:2px;letter-spacing:.3px}
+.spd-val{font-family:var(--fh);font-size:clamp(5.5px,1vw,6px);color:var(--t2);line-height:1.7}
+.btn-go{font-family:var(--fh);font-size:clamp(6px,1.2vw,7px);padding:12px 6px;
+  background:var(--r);color:white;border:none;cursor:pointer;width:100%;text-align:center;
+  letter-spacing:.3px;line-height:1.8;box-shadow:0 4px 18px rgba(232,25,44,.3);transition:all .1s;min-height:64px}
+@media(max-width:560px){.btn-go{min-height:52px;padding:10px 20px;width:auto}}
+.btn-go:hover{background:var(--r2)}.btn-go:active{transform:scale(.97)}
+.btn-reset{font-family:var(--fh);font-size:clamp(6px,1.2vw,7px);padding:7px 5px;background:transparent;
+  color:var(--t3);border:none;cursor:pointer;width:100%;text-align:center;min-height:36px}
+.btn-reset:hover{color:var(--t2)}
+
+/* ── RESULT PANEL ────────────────────────────── */
+.result-wrap{display:none;margin-top:20px;animation:fadeUp .22s ease}
+.result-wrap.vis{display:block}
+.res-header{text-align:center;padding:16px 16px 12px;background:var(--bg2);margin-bottom:2px}
+.res-title{font-family:var(--fh);font-size:clamp(7px,1.5vw,9px);color:var(--t2);letter-spacing:.5px;margin-bottom:12px}
+.win-bar-wrap{max-width:560px;margin:0 auto 10px}
+.win-names{display:flex;justify-content:space-between;margin-bottom:5px}
+.win-name{font-family:var(--fh);font-size:clamp(7px,1.4vw,9px);letter-spacing:.4px}
+.win-bar{height:26px;background:var(--bg4);display:flex;overflow:hidden}
+.win-r{height:100%;background:var(--r);display:flex;align-items:center;justify-content:center;
+  font-family:var(--fh);font-size:clamp(6px,1.2vw,7px);color:white;
+  transition:width .7s cubic-bezier(.22,.68,0,1.2);min-width:28px;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+.win-b{flex:1;height:100%;background:var(--b);display:flex;align-items:center;justify-content:center;
+  font-family:var(--fh);font-size:clamp(6px,1.2vw,7px);color:white;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+.win-verdict{font-family:var(--fh);font-size:clamp(7px,1.4vw,9px);color:var(--t1);margin-top:8px;letter-spacing:.3px}
+.win-verdict.close{color:var(--y)}.win-verdict.likely{color:var(--g)}.win-verdict.strong{color:var(--r)}
+.spd-note{font-size:17px;color:var(--t3);margin-top:4px}
+
+/* RESULT COLUMNS */
+.res-cols{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--sep)}
+@media(max-width:560px){.res-cols{grid-template-columns:1fr}}
+.rcol{background:var(--bg2);padding:0}
+.rcol.c1{background:linear-gradient(180deg,rgba(232,25,44,.05) 0%,var(--bg2) 180px)}
+.rcol.c2{background:linear-gradient(180deg,rgba(59,91,219,.05) 0%,var(--bg2) 180px)}
+.rcol-head{padding:11px 14px 9px;border-bottom:1px solid var(--sep);
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
+.rcol-name{font-family:var(--fh);font-size:clamp(8px,1.6vw,10px);letter-spacing:.5px}
+.rcol-name.n1{color:var(--r)}.rcol-name.n2{color:var(--b2)}
+.role-tag{font-family:var(--fh);font-size:clamp(5px,1vw,6px);padding:3px 9px;
+  background:var(--bd);color:var(--b2);letter-spacing:.3px}
+
+.iblock{padding:12px 14px;border-bottom:1px solid var(--sep)}
+.iblock:last-child{border-bottom:none}
+.ib-lbl{font-family:var(--fh);font-size:clamp(5.5px,1.1vw,7px);color:var(--t3);margin-bottom:8px;letter-spacing:.3px}
+
+.dmg-dir{font-family:var(--fh);font-size:clamp(5.5px,1.1vw,6.5px);color:var(--t2);margin-bottom:4px;letter-spacing:.2px}
+.dmg-pct{font-family:var(--fh);font-size:clamp(11px,2vw,14px);margin-bottom:4px;letter-spacing:.5px}
+.dmg-pct.ohko{color:var(--r)}.dmg-pct.twohko{color:var(--o)}.dmg-pct.safe{color:var(--g)}
+.dmg-trk{height:6px;background:var(--bg4);margin-bottom:6px;overflow:hidden}
+.dmg-fill{height:100%;transition:width .6s ease}
+.dmg-pill{font-family:var(--fh);font-size:clamp(5.5px,1.1vw,6.5px);display:inline-block;padding:3px 9px;color:white;letter-spacing:.3px}
+.dmg-pill.ohko{background:var(--r)}.dmg-pill.twohko{background:var(--o)}.dmg-pill.safe{background:var(--g);color:#0a0e1a}
+.dmg-note{font-size:15px;color:var(--t3);margin-top:3px}
+
+.adv-line{display:flex;align-items:flex-start;gap:6px;margin-bottom:4px;font-size:17px;color:var(--t2)}
+.adv-i{font-size:15px;flex-shrink:0;margin-top:1px}
+
+.move-wrap{display:flex;flex-wrap:wrap;gap:4px}
+.move-tag{display:inline-block;font-family:var(--fb);font-size:17px;padding:2px 9px;
+  color:white;cursor:default;transition:transform .1s}
+.move-tag:hover{transform:scale(1.04)}
+
+.cc-row{display:flex;align-items:center;justify-content:space-between;
+  padding:5px 0;border-bottom:1px solid var(--sep);font-size:17px}
+.cc-row:last-child{border:none;padding-bottom:0}
+.cc-nm{color:var(--t1)}.cc-why{font-size:15px;color:var(--t3);text-align:right}
+
+.spt-row{display:flex;align-items:center;gap:7px;padding:4px 0;border-bottom:1px solid var(--sep)}
+.spt-row:last-child{border:none}
+.spt-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.spt-dot.beat{background:var(--g)}.spt-dot.lose{background:var(--r)}.spt-dot.tie{background:var(--y)}
+.spt-nm{font-size:17px;color:var(--t2);flex:1}
+.spt-st{font-family:var(--fh);font-size:clamp(4.5px,.9vw,5.5px);color:var(--t3)}
+.tip-txt{font-size:17px;color:var(--t2);line-height:1.45}
+
+/* ── TEAM TAB ────────────────────────────────── */
+.teams-grid{display:grid;grid-template-columns:1fr 68px 1fr;gap:10px;align-items:start}
+@media(max-width:560px){.teams-grid{grid-template-columns:1fr}}
+.team-panel{background:var(--bg2)}
+.team-head{padding:10px 13px;border-bottom:1px solid var(--sep);
+  display:flex;align-items:center;justify-content:space-between}
+.team-nm{font-family:var(--fh);font-size:clamp(8px,1.6vw,10px);letter-spacing:.5px}
+.tnm1{color:var(--r)}.tnm2{color:var(--b2)}
+.team-cnt{font-family:var(--fh);font-size:clamp(5.5px,1vw,7px);color:var(--t3)}
+.team-slots{padding:8px 10px;display:flex;flex-direction:column;gap:4px}
+.tslot{display:grid;grid-template-columns:16px 1fr auto;align-items:center;gap:5px}
+.tslot-n{font-family:var(--fh);font-size:5.5px;color:var(--t4);text-align:right}
+.tslot-sel{width:100%;font-family:var(--fb);font-size:17px;padding:5px 7px;
+  background:var(--bg3);color:var(--t1);border:none;outline:none;cursor:pointer;min-height:36px}
+.tslot-sel:focus{background:var(--bg4)}
+.tslot-sel.filled{color:var(--t1)}
+.tslot-sel option{background:var(--bg2)}
+.tslot-types{display:flex;gap:2px;min-width:36px}
+.ttype{font-family:var(--fh);font-size:4.5px;padding:2px 4px;color:white}
+.btn-blue{font-family:var(--fh);font-size:clamp(6px,1.2vw,7px);padding:12px 5px;
+  background:var(--b);color:white;border:none;cursor:pointer;width:100%;text-align:center;
+  letter-spacing:.3px;line-height:1.8;box-shadow:0 4px 18px rgba(59,91,219,.3);min-height:64px}
+@media(max-width:560px){.btn-blue{min-height:52px;padding:10px 18px;width:auto}}
+.btn-blue:hover{background:var(--b2)}.btn-blue:active{transform:scale(.97)}
+
+/* TEAM ANALYSIS */
+.tan{display:none;margin-top:20px;animation:fadeUp .22s ease}
+.tan.vis{display:block}
+.tan-head{background:var(--bg2);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:2px}
+.tan-title{font-family:var(--fh);font-size:clamp(7px,1.5vw,9px);color:var(--t1);letter-spacing:.5px}
+.btn-exp{font-family:var(--fh);font-size:clamp(5.5px,1vw,6.5px);padding:6px 11px;background:var(--bg4);color:var(--t2);border:none;cursor:pointer;min-height:36px}
+.btn-exp:hover{color:var(--t1)}
+.tan-cols{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--sep)}
+@media(max-width:560px){.tan-cols{grid-template-columns:1fr}}
+.tan-col{background:var(--bg2)}
+.tan-col.tc1{background:linear-gradient(180deg,rgba(232,25,44,.04) 0%,var(--bg2) 160px)}
+.tan-col.tc2{background:linear-gradient(180deg,rgba(59,91,219,.04) 0%,var(--bg2) 160px)}
+.tan-col-head{padding:11px 14px 9px;border-bottom:1px solid var(--sep)}
+.tan-col-nm{font-family:var(--fh);font-size:clamp(8px,1.6vw,10px);letter-spacing:.5px}
+.tnm1{color:var(--r)}.tnm2{color:var(--b2)}
+.tblock{padding:12px 14px;border-bottom:1px solid var(--sep)}
+.tblock:last-child{border-bottom:none}
+.tb-lbl{font-family:var(--fh);font-size:clamp(5.5px,1.1vw,7px);color:var(--t3);margin-bottom:9px;letter-spacing:.3px}
+.arch-banner{display:inline-block;font-family:var(--fh);font-size:clamp(6.5px,1.3vw,8px);padding:6px 12px;color:white;margin-bottom:10px;letter-spacing:.4px}
+.rf-row{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+.rf-lbl{font-family:var(--fh);font-size:clamp(5px,.9vw,5.5px);color:var(--t2);width:44px;flex-shrink:0}
+.rf-trk{flex:1;height:7px;background:var(--bg4);overflow:hidden}
+.rf-fill{height:100%;transition:width .5s ease}
+.rf-n{font-family:var(--fh);font-size:clamp(5px,.9vw,5.5px);color:var(--t3);width:20px;text-align:right}
+.cov-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:3px;margin-bottom:7px}
+.cov-dot{aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+  font-family:var(--fh);font-size:4px;color:white;text-shadow:0 1px 2px rgba(0,0,0,.5);
+  text-align:center;line-height:1;padding:1px;cursor:default;transition:transform .12s}
+.cov-dot:hover{transform:scale(1.15)}
+.cov-dot.miss{background:var(--bg4)!important;color:var(--t4)}
+.cov-dot.hole{outline:2px solid var(--r);outline-offset:1px}
+.cov-stat{font-family:var(--fh);font-size:clamp(5px,1vw,5.5px);color:var(--t3);margin-bottom:5px}
+.hole-p{display:inline-block;font-family:var(--fh);font-size:4.5px;padding:2px 6px;background:rgba(232,25,44,.15);color:var(--r);margin:2px}
+.wc-box{background:rgba(47,182,122,.07);border-left:2px solid var(--g);padding:9px 11px;margin-bottom:8px}
+.wc-arch{font-family:var(--fh);font-size:clamp(5.5px,1vw,6.5px);color:var(--g);margin-bottom:3px;letter-spacing:.3px}
+.wc-body{font-size:17px;color:var(--t2);line-height:1.4}
+.gap-ok{font-size:17px;color:var(--g);margin-bottom:3px}
+.gap-warn{display:flex;align-items:flex-start;gap:6px;margin-bottom:4px;font-size:17px;color:var(--t2)}
+.gap-icon{font-family:var(--fh);font-size:9px;color:var(--y);flex-shrink:0;padding-top:1px}
+.strat-tip{font-size:17px;color:var(--t2);margin-bottom:6px;padding-left:8px;border-left:2px solid var(--y);line-height:1.4}
+.sv-row{margin-bottom:8px}
+.sv-nms{display:flex;justify-content:space-between;margin-bottom:3px}
+.sv-n{font-family:var(--fh);font-size:clamp(5px,1vw,5.5px);letter-spacing:.3px}
+.sv-bar{height:9px;background:var(--bg4);display:flex;overflow:hidden}
+.sv-r{height:100%;background:var(--r);transition:width .6s ease}
+.sv-b{flex:1;height:100%;background:var(--b)}
+.exp-wrap{display:none;padding:12px 16px;background:var(--bg2);margin-top:2px}
+.exp-wrap.vis{display:block}
+.exp-code{background:#090C17;padding:11px;font-family:'Courier New',monospace;font-size:13px;
+  color:#7DFF7A;white-space:pre-wrap;line-height:1.6;max-height:220px;overflow-y:auto}
+.btn-copy{font-family:var(--fh);font-size:clamp(5.5px,1vw,6.5px);padding:6px 12px;
+  background:var(--bg4);color:var(--t2);border:none;cursor:pointer;margin-top:6px;min-height:32px}
+.btn-copy:hover{color:var(--t1)}
+
+/* ── FOOTER ──────────────────────────────────── */
+footer{border-top:1px solid var(--sep);padding:14px 18px;text-align:center}
+.ftr-main{font-family:var(--fh);font-size:clamp(5px,1vw,6px);color:var(--t4);letter-spacing:.4px;margin-bottom:7px}
+.ftr-main span{color:var(--y)}
+.ftr-links{display:flex;justify-content:center;flex-wrap:wrap;gap:14px;margin-bottom:7px}
+.ftr-a{font-family:var(--fh);font-size:clamp(4.5px,.9vw,5.5px);color:var(--t4);cursor:pointer}
+.ftr-a:hover{color:var(--b2)}
+.ftr-disc{font-size:14px;color:var(--t4)}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="hdr-l">
+    <div class="ball"></div>
+    <div>
+      <div class="brand-name">POKÉBATTLE PREDICTOR</div>
+      <div class="brand-sub">Competitive Calculator · Gen 9</div>
+    </div>
+  </div>
+  <div class="hdr-r">
+    <select class="fmt-sel"><option>OU Singles</option><option>VGC Doubles</option><option>Ubers</option><option>RU</option><option>Monotype</option></select>
+    <button class="tab-btn active" data-tab="battle">⚔ 1v1</button>
+    <button class="tab-btn" data-tab="team">⬡ 6v6</button>
+  </div>
+</header>
+
+<!-- PICKER MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closePickerIfBG(event)">
+  <div class="modal-box" id="modal-box">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-title">SELECT POKEMON — PLAYER 1</div>
+      <button class="modal-close" onclick="closePicker()">✕ CLOSE</button>
+    </div>
+    <div class="modal-search">
+      <input class="search-input" id="search-inp" type="text" placeholder="Search by name..." oninput="filterGrid()">
+      <div class="gen-filters" id="gen-filters">
+        <button class="gen-btn on" data-gen="all" onclick="setGen(this,'all')">ALL</button>
+        <button class="gen-btn" data-gen="1" onclick="setGen(this,'1')">GEN I</button>
+        <button class="gen-btn" data-gen="2" onclick="setGen(this,'2')">GEN II</button>
+        <button class="gen-btn" data-gen="3" onclick="setGen(this,'3')">GEN III</button>
+        <button class="gen-btn" data-gen="4" onclick="setGen(this,'4')">GEN IV</button>
+        <button class="gen-btn" data-gen="5" onclick="setGen(this,'5')">GEN V</button>
+        <button class="gen-btn" data-gen="6" onclick="setGen(this,'6')">GEN VI</button>
+        <button class="gen-btn" data-gen="7" onclick="setGen(this,'7')">GEN VII</button>
+        <button class="gen-btn" data-gen="8" onclick="setGen(this,'8')">GEN VIII</button>
+        <button class="gen-btn" data-gen="9" onclick="setGen(this,'9')">GEN IX</button>
+      </div>
+    </div>
+    <div class="modal-grid" id="modal-grid"></div>
+  </div>
+</div>
+
+<div class="main">
+
+<!-- ══════════════════════ 1v1 TAB ══════════════════════ -->
+<section class="tab-pane active" id="tab-battle">
+
+  <div class="intro">
+    <div class="intro-icon">★</div>
+    <div class="intro-body">
+      <strong>Competitive Battle Calculator</strong> — win probability, field-modified damage, OHKO flags, checks &amp; counters, speed tiers, EV presets and playstyle guide.
+      <div class="ftags">
+        <span class="ftag">WIN PROBABILITY</span><span class="ftag">DAMAGE %</span><span class="ftag">OHKO/2HKO</span>
+        <span class="ftag">CHECKS &amp; COUNTERS</span><span class="ftag">SPEED TIERS</span>
+        <span class="ftag">EV PRESETS</span><span class="ftag">WEATHER/TERRAIN</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUICK MATCH -->
+  <div class="qrow">
+    <span class="qlbl">QUICK:</span>
+    <button class="qbtn" onclick="qm('Charizard','Blastoise')"><span class="qtype" style="background:#E06820">FI</span> Charizard vs Blastoise</button>
+    <button class="qbtn" onclick="qm('Garchomp','Togekiss')"><span class="qtype" style="background:#6030E0">DR</span> Garchomp vs Togekiss</button>
+    <button class="qbtn" onclick="qm('Mewtwo','Dragonite')"><span class="qtype" style="background:#E04878">PS</span> Mewtwo vs Dragonite</button>
+    <button class="qbtn" onclick="qm('Urshifu','Hatterene')"><span class="qtype" style="background:#A02020">FG</span> Urshifu vs Hatterene</button>
+    <button class="qbtn" onclick="qm('Flutter Mane','Iron Bundle')"><span class="qtype" style="background:#D07898">FA</span> Flutter Mane vs Iron Bundle</button>
+  </div>
+
+  <!-- FIELD CONDITIONS (collapsible) -->
+  <button class="field-toggle" id="field-toggle-btn" onclick="toggleField()">
+    <span>⚙ FIELD CONDITIONS</span>
+    <span class="field-toggle-arrow" id="field-arrow">▶</span>
+    <span style="font-family:var(--fb);font-size:15px;color:var(--t3);margin-left:auto">affects damage calculation</span>
+  </button>
+  <div class="field-strip" id="field-strip">
+    <div class="f-group"><div class="f-lbl">WEATHER</div>
+      <select class="f-sel" id="fw"><option value="none">None</option><option value="rain">Rain</option><option value="sun">Sun</option><option value="sand">Sandstorm</option><option value="snow">Snow</option></select></div>
+    <div class="f-group"><div class="f-lbl">TERRAIN</div>
+      <select class="f-sel" id="ft"><option value="none">None</option><option value="electric">Electric</option><option value="psychic">Psychic</option><option value="grassy">Grassy</option><option value="misty">Misty</option></select></div>
+    <div class="f-group"><div class="f-lbl">SCREENS / HAZARDS</div>
+      <select class="f-sel" id="fm"><option value="none">None</option><option value="screens">Reflect + Light Screen</option><option value="reflect">Reflect only</option><option value="lightscreen">Light Screen only</option><option value="sr">Stealth Rock up</option></select></div>
+    <div class="f-group"><div class="f-lbl">ATTACKER BOOST</div>
+      <select class="f-sel" id="fb_"><option value="0">+0</option><option value="1">+1</option><option value="2">+2</option><option value="-1">−1</option></select></div>
+  </div>
+
+  <!-- ARENA -->
+  <div class="arena">
+
+    <!-- P1 -->
+    <div class="fighter" id="f1">
+      <div class="f-top">
+        <span class="f-player fp1">PLAYER 1</span>
+        <div class="f-badges">
+          <span class="sr-tag" id="sr1">SR WEAK</span>
+          <span class="tier-tag" id="tier1" style="background:var(--bg4);color:var(--t3)">—</span>
+        </div>
+      </div>
+      <button class="picker-btn" id="pb1" onclick="openPicker(1)">
+        <img id="pb1img" src="" alt="" style="display:none">
+        <span class="picker-btn-name" id="pb1name">— Choose Pokemon —</span>
+        <span class="picker-btn-arrow">▼</span>
+      </button>
+      <div class="sprite-z" id="spr1"><div class="sprite-empty"><div class="se-ball"></div><div class="se-lbl">SELECT</div></div></div>
+      <div id="usg1"></div>
+      <div class="types-row" id="typ1"></div>
+      <div id="wk1"></div>
+      <div class="f-div"></div>
+      <div id="evs1" style="display:none">
+        <div class="ev-sec">
+          <div class="ev-lbl">EV SPREAD</div>
+          <div class="ev-presets">
+            <button class="ev-btn" onclick="applyEV(1,'offensive')">Offensive</button>
+            <button class="ev-btn" onclick="applyEV(1,'bulky-off')">Bulky Off.</button>
+            <button class="ev-btn" onclick="applyEV(1,'defensive')">Defensive</button>
+            <button class="ev-btn" onclick="applyEV(1,'speed')">Max Speed</button>
+          </div>
+          <div class="cfg-pair">
+            <div class="cfg-g"><div class="cfg-lbl">NATURE</div>
+              <select class="cfg-sel" id="nat1" onchange="onNat(1)">
+                <option value="Hardy">Hardy (neutral)</option><option value="Adamant">Adamant +Atk</option><option value="Modest">Modest +SpA</option><option value="Timid">Timid +Spe</option><option value="Jolly">Jolly +Spe</option><option value="Bold">Bold +Def</option><option value="Calm">Calm +SpD</option><option value="Careful">Careful +SpD</option><option value="Impish">Impish +Def</option><option value="Brave">Brave +Atk−Spe</option><option value="Quiet">Quiet +SpA−Spe</option><option value="Relaxed">Relaxed +Def−Spe</option>
+              </select></div>
+            <div class="cfg-g"><div class="cfg-lbl">HELD ITEM</div>
+              <select class="cfg-sel" id="itm1">
+                <option value="None">No Item</option><option value="Choice Band">Choice Band</option><option value="Choice Specs">Choice Specs</option><option value="Choice Scarf">Choice Scarf</option><option value="Life Orb">Life Orb</option><option value="Assault Vest">Assault Vest</option><option value="Leftovers">Leftovers</option><option value="Rocky Helmet">Rocky Helmet</option><option value="Focus Sash">Focus Sash</option>
+              </select></div>
+          </div>
+        </div>
+      </div>
+      <div id="sts1" style="display:none">
+        <div class="stats-sec"><div class="stats-lbl">STATS (nature + EV adjusted)</div><div id="str1"></div></div>
+      </div>
+    </div>
+
+    <!-- VS -->
+    <div class="vs-col">
+      <div class="vs-word">VS</div>
+      <div class="spd-pill"><div class="spd-lbl">SPEED</div><div class="spd-val" id="spdv" style="color:var(--t3)">—</div></div>
+      <button class="btn-go" onclick="doPredict()">⚡<br>PREDICT</button>
+      <button class="btn-reset" onclick="resetBattle()">↺ reset</button>
+    </div>
+
+    <!-- P2 -->
+    <div class="fighter" id="f2">
+      <div class="f-top">
+        <span class="f-player fp2">PLAYER 2</span>
+        <div class="f-badges">
+          <span class="sr-tag" id="sr2">SR WEAK</span>
+          <span class="tier-tag" id="tier2" style="background:var(--bg4);color:var(--t3)">—</span>
+        </div>
+      </div>
+      <button class="picker-btn" id="pb2" onclick="openPicker(2)">
+        <img id="pb2img" src="" alt="" style="display:none">
+        <span class="picker-btn-name" id="pb2name">— Choose Pokemon —</span>
+        <span class="picker-btn-arrow">▼</span>
+      </button>
+      <div class="sprite-z" id="spr2"><div class="sprite-empty"><div class="se-ball"></div><div class="se-lbl">SELECT</div></div></div>
+      <div id="usg2"></div>
+      <div class="types-row" id="typ2"></div>
+      <div id="wk2"></div>
+      <div class="f-div"></div>
+      <div id="evs2" style="display:none">
+        <div class="ev-sec">
+          <div class="ev-lbl">EV SPREAD</div>
+          <div class="ev-presets">
+            <button class="ev-btn" onclick="applyEV(2,'offensive')">Offensive</button>
+            <button class="ev-btn" onclick="applyEV(2,'bulky-off')">Bulky Off.</button>
+            <button class="ev-btn" onclick="applyEV(2,'defensive')">Defensive</button>
+            <button class="ev-btn" onclick="applyEV(2,'speed')">Max Speed</button>
+          </div>
+          <div class="cfg-pair">
+            <div class="cfg-g"><div class="cfg-lbl">NATURE</div>
+              <select class="cfg-sel" id="nat2" onchange="onNat(2)">
+                <option value="Hardy">Hardy (neutral)</option><option value="Adamant">Adamant +Atk</option><option value="Modest">Modest +SpA</option><option value="Timid">Timid +Spe</option><option value="Jolly">Jolly +Spe</option><option value="Bold">Bold +Def</option><option value="Calm">Calm +SpD</option><option value="Careful">Careful +SpD</option><option value="Impish">Impish +Def</option><option value="Brave">Brave +Atk−Spe</option><option value="Quiet">Quiet +SpA−Spe</option><option value="Relaxed">Relaxed +Def−Spe</option>
+              </select></div>
+            <div class="cfg-g"><div class="cfg-lbl">HELD ITEM</div>
+              <select class="cfg-sel" id="itm2">
+                <option value="None">No Item</option><option value="Choice Band">Choice Band</option><option value="Choice Specs">Choice Specs</option><option value="Choice Scarf">Choice Scarf</option><option value="Life Orb">Life Orb</option><option value="Assault Vest">Assault Vest</option><option value="Leftovers">Leftovers</option><option value="Rocky Helmet">Rocky Helmet</option><option value="Focus Sash">Focus Sash</option>
+              </select></div>
+          </div>
+        </div>
+      </div>
+      <div id="sts2" style="display:none">
+        <div class="stats-sec"><div class="stats-lbl">STATS (nature + EV adjusted)</div><div id="str2"></div></div>
+      </div>
+    </div>
+
+  </div><!-- /arena -->
+
+  <!-- RESULTS -->
+  <div class="result-wrap" id="rw">
+    <div class="res-header">
+      <div class="res-title">⚔ PREDICTION RESULTS</div>
+      <div class="win-bar-wrap">
+        <div class="win-names">
+          <span class="win-name" id="wn1" style="color:var(--r)">P1</span>
+          <span class="win-name" id="wn2" style="color:var(--b2)">P2</span>
+        </div>
+        <div class="win-bar"><div class="win-r" id="wr" style="width:50%">50%</div><div class="win-b" id="wb">50%</div></div>
+        <div class="win-verdict" id="wv">—</div>
+        <div class="spd-note" id="spdnote">—</div>
+      </div>
+    </div>
+    <div class="res-cols">
+      <div class="rcol c1">
+        <div class="rcol-head"><span class="rcol-name n1" id="rcn1">P1</span><span class="role-tag" id="rb1">—</span></div>
+        <div class="iblock"><div class="ib-lbl">DAMAGE DEALT</div><div class="dmg-dir" id="dd1"></div><div class="dmg-pct" id="dp1">—</div><div class="dmg-trk"><div class="dmg-fill" id="df1" style="width:0%"></div></div><span class="dmg-pill" id="dv1">—</span><div class="dmg-note" id="dn1"></div></div>
+        <div class="iblock"><div class="ib-lbl">ADVANTAGES</div><div id="adv1"></div></div>
+        <div class="iblock"><div class="ib-lbl">KEY MOVES</div><div class="move-wrap" id="mv1"></div></div>
+        <div class="iblock"><div class="ib-lbl">CHECKS &amp; COUNTERS</div><div id="cc1"></div></div>
+        <div class="iblock"><div class="ib-lbl">SPEED TIER CONTEXT</div><div id="spt1"></div></div>
+        <div class="iblock"><div class="ib-lbl">STRATEGY GUIDE</div><div class="tip-txt" id="tip1"></div></div>
+      </div>
+      <div class="rcol c2">
+        <div class="rcol-head"><span class="rcol-name n2" id="rcn2">P2</span><span class="role-tag" id="rb2">—</span></div>
+        <div class="iblock"><div class="ib-lbl">DAMAGE DEALT</div><div class="dmg-dir" id="dd2"></div><div class="dmg-pct" id="dp2">—</div><div class="dmg-trk"><div class="dmg-fill" id="df2" style="width:0%"></div></div><span class="dmg-pill" id="dv2">—</span><div class="dmg-note" id="dn2"></div></div>
+        <div class="iblock"><div class="ib-lbl">ADVANTAGES</div><div id="adv2"></div></div>
+        <div class="iblock"><div class="ib-lbl">KEY MOVES</div><div class="move-wrap" id="mv2"></div></div>
+        <div class="iblock"><div class="ib-lbl">CHECKS &amp; COUNTERS</div><div id="cc2"></div></div>
+        <div class="iblock"><div class="ib-lbl">SPEED TIER CONTEXT</div><div id="spt2"></div></div>
+        <div class="iblock"><div class="ib-lbl">STRATEGY GUIDE</div><div class="tip-txt" id="tip2"></div></div>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<!-- ══════════════════════ TEAM TAB ══════════════════════ -->
+<section class="tab-pane" id="tab-team">
+  <div class="intro">
+    <div class="intro-icon">⬡</div>
+    <div class="intro-body">Build two teams and hit <strong>Analyze</strong> for archetype, coverage, role gaps, win condition, stat comparison and a <strong>Showdown export</strong>.</div>
+  </div>
+  <div class="slbl">BUILD YOUR TEAMS</div>
+  <div class="teams-grid">
+    <div class="team-panel"><div class="team-head"><span class="team-nm tnm1">◾ TEAM 1</span><span class="team-cnt" id="tc1">0 / 6</span></div><div class="team-slots" id="ts1"></div></div>
+    <div class="vs-col">
+      <div class="vs-word">VS</div>
+      <button class="btn-blue" onclick="doTeamAnalysis()">📊<br>ANALYZE</button>
+      <button class="btn-reset" onclick="resetTeams()">↺ reset</button>
+    </div>
+    <div class="team-panel"><div class="team-head"><span class="team-nm tnm2">◾ TEAM 2</span><span class="team-cnt" id="tc2">0 / 6</span></div><div class="team-slots" id="ts2"></div></div>
+  </div>
+  <div class="tan" id="tan">
+    <div class="tan-head">
+      <div class="tan-title">📊 TEAM ANALYSIS</div>
+      <button class="btn-exp" onclick="toggleExport()">↓ Showdown Export</button>
+    </div>
+    <div class="exp-wrap" id="expw"><div class="exp-code" id="expc"></div><button class="btn-copy" onclick="copyExport()">⧉ Copy to clipboard</button></div>
+    <div style="background:var(--bg2);padding:12px 16px;border-top:1px solid var(--sep);margin-bottom:2px">
+      <div class="slbl" style="margin-top:0">AVERAGE STAT COMPARISON</div>
+      <div id="statcmp" style="max-width:520px;margin:0 auto"></div>
+    </div>
+    <div class="tan-cols">
+      <div class="tan-col tc1"><div class="tan-col-head"><div class="tan-col-nm tnm1">◾ TEAM 1</div></div>
+        <div class="tblock"><div class="tb-lbl">WIN CONDITION</div><div id="wc1"></div></div>
+        <div class="tblock"><div class="tb-lbl">TEAM FORMAT</div><div id="arch1"></div></div>
+        <div class="tblock"><div class="tb-lbl">TYPE COVERAGE</div><div id="cov1"></div></div>
+        <div class="tblock"><div class="tb-lbl">ROLE GAPS</div><div id="gaps1"></div></div>
+        <div class="tblock"><div class="tb-lbl">STRATEGY TIPS</div><div id="stips1"></div></div>
+      </div>
+      <div class="tan-col tc2"><div class="tan-col-head"><div class="tan-col-nm tnm2">◾ TEAM 2</div></div>
+        <div class="tblock"><div class="tb-lbl">WIN CONDITION</div><div id="wc2"></div></div>
+        <div class="tblock"><div class="tb-lbl">TEAM FORMAT</div><div id="arch2"></div></div>
+        <div class="tblock"><div class="tb-lbl">TYPE COVERAGE</div><div id="cov2"></div></div>
+        <div class="tblock"><div class="tb-lbl">ROLE GAPS</div><div id="gaps2"></div></div>
+        <div class="tblock"><div class="tb-lbl">STRATEGY TIPS</div><div id="stips2"></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div><!-- /main -->
+
+<footer>
+  <div class="ftr-main">POKÉBATTLE PREDICTOR · <span>COMPETITIVE EDITION</span> · NOT AFFILIATED WITH NINTENDO / GAME FREAK</div>
+  <div class="ftr-links">
+    <span class="ftr-a">Smogon Dex</span><span class="ftr-a">PS Simulator</span><span class="ftr-a">Damage Formula</span><span class="ftr-a">VGC Resources</span><span class="ftr-a">Feedback</span>
+  </div>
+  <div class="ftr-disc">Sprites © Nintendo/Game Freak via PokeAPI · Damage estimates use simplified Gen 9 formula</div>
+</footer>
+
+<script>
+// ═══════════════════════════════════════
+// SPRITE SYSTEM — Canvas pixel art (always works) + real sprite overlay
+// ═══════════════════════════════════════
+
+// 8×8 pixel patterns by body type (0=transparent,1=primary,2=secondary,3=shadow)
+const BODY_PATTERNS = {
+  humanoid:[0,0,1,1,1,1,0,0, 0,1,1,3,3,1,1,0, 0,0,1,1,1,1,0,0, 0,1,2,1,1,2,1,0, 0,0,1,1,1,1,0,0, 0,0,1,0,0,1,0,0, 0,1,1,0,0,1,1,0, 0,0,0,0,0,0,0,0],
+  quad:    [0,0,0,1,1,0,0,0, 0,1,1,3,3,1,1,0, 1,1,1,1,1,1,1,1, 0,1,2,1,1,2,1,0, 0,1,0,1,1,0,1,0, 0,1,0,1,1,0,1,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0],
+  dragon:  [0,1,0,0,0,0,1,0, 1,1,1,3,3,1,1,1, 0,1,1,1,1,1,1,0, 0,0,1,2,2,1,0,0, 0,0,0,1,1,0,0,0, 0,0,1,1,1,1,0,0, 0,1,1,0,0,1,1,0, 0,0,0,0,0,0,0,0],
+  bird:    [0,0,1,1,1,1,0,0, 0,1,1,3,3,1,1,0, 1,1,0,1,1,0,1,1, 1,1,1,1,1,1,1,1, 0,0,1,2,2,1,0,0, 0,0,0,1,1,0,0,0, 0,0,1,1,1,1,0,0, 0,0,0,0,0,0,0,0],
+  blob:    [0,0,1,1,1,1,0,0, 0,1,1,1,1,1,1,0, 1,1,3,1,1,3,1,1, 1,1,1,1,1,1,1,1, 1,1,2,1,1,2,1,1, 0,1,1,1,1,1,1,0, 0,0,1,1,1,1,0,0, 0,0,0,0,0,0,0,0],
+  bug:     [0,1,0,1,1,0,1,0, 0,1,1,1,1,1,1,0, 1,0,1,3,3,1,0,1, 0,0,1,1,1,1,0,0, 1,1,1,2,2,1,1,1, 0,1,0,1,1,0,1,0, 0,1,0,0,0,0,1,0, 0,0,0,0,0,0,0,0],
+  serpent: [0,0,0,1,1,0,0,0, 0,0,1,3,3,1,0,0, 0,1,1,1,1,0,0,0, 0,0,1,1,2,1,0,0, 0,0,0,1,1,1,0,0, 0,0,0,0,1,1,0,0, 0,0,0,0,0,1,1,0, 0,0,0,0,0,0,0,0],
+  ghost:   [0,0,1,1,1,1,0,0, 0,1,1,1,1,1,1,0, 1,1,3,1,1,3,1,1, 1,1,1,1,1,1,1,1, 1,1,2,1,1,2,1,1, 1,1,1,1,1,1,1,1, 1,0,1,0,0,1,0,1, 0,0,0,0,0,0,0,0],
+};
+
+function getBodyType(p){
+  const t=p.types[0];
+  if(t==='Ghost'||t==='Psychic')return'ghost';
+  if(t==='Dragon')return'dragon';
+  if(t==='Flying'||t==='Bug')return['bird','bug'][p.types[0]==='Bug'?1:0];
+  if(t==='Water'&&p.types.length===1)return'serpent';
+  if(['Normal','Fighting','Steel','Poison'].includes(t))return'humanoid';
+  if(['Rock','Ground','Ice','Grass','Fire'].includes(t))return'quad';
+  return'blob';
+}
+
+function hex2rgb(hex){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return{r,g,b};}
+function darkHex(hex,f=0.55){const c=hex2rgb(hex);return`rgb(${Math.floor(c.r*f)},${Math.floor(c.g*f)},${Math.floor(c.b*f)})`;}
+function midHex(h1,h2){const a=hex2rgb(h1),b=hex2rgb(h2);return`rgb(${Math.floor((a.r+b.r)/2)},${Math.floor((a.g+b.g)/2)},${Math.floor((a.b+b.b)/2)})`;}
+
+function drawPixelSprite(canvas, p, size=64){
+  const ctx=canvas.getContext('2d');
+  canvas.width=size;canvas.height=size;
+  ctx.imageSmoothingEnabled=false;
+  ctx.clearRect(0,0,size,size);
+  const px=size/8;
+  const c1=p.types[0]?TCL[p.types[0]]:'#888';
+  const c2=p.types[1]?TCL[p.types[1]]:midHex(c1,'#ffffff');
+  const cDark=darkHex(c1);
+  const pattern=BODY_PATTERNS[getBodyType(p)]||BODY_PATTERNS.blob;
+  const palette={0:null,1:c1,2:c2,3:cDark};
+  for(let i=0;i<64;i++){
+    const v=pattern[i];
+    if(v===0)continue;
+    ctx.fillStyle=palette[v];
+    ctx.fillRect((i%8)*px,Math.floor(i/8)*px,px,px);
+  }
+  // Eye dots
+  ctx.fillStyle='white';
+  ctx.fillRect(2*px,1*px,px*.6,px*.6);
+  ctx.fillRect(5*px,1*px,px*.6,px*.6);
+}
+
+function makeSpriteEl(p, size=64){
+  const wrap=document.createElement('div');
+  wrap.style.cssText='position:relative;width:'+size+'px;height:'+size+'px;';
+  const canvas=document.createElement('canvas');
+  drawPixelSprite(canvas,p,size);
+  canvas.style.cssText='position:absolute;inset:0;image-rendering:pixelated;';
+  wrap.appendChild(canvas);
+  // Try to load real sprite on top
+  const img=document.createElement('img');
+  const realUrl=p.id<=649
+    ?`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/${p.id}.png`
+    :`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png`;
+  img.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;image-rendering:pixelated;opacity:0;transition:opacity .3s;';
+  img.onload=()=>{img.style.opacity='1';canvas.style.opacity='0';};
+  img.onerror=()=>{
+    // Try fallback to standard sprite
+    if(img.src.includes('black-white')){
+      img.src=`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png`;
+    }
+  };
+  img.src=realUrl;
+  wrap.appendChild(img);
+  return wrap;
+}
+
+function makeGridSpriteEl(p){
+  const canvas=document.createElement('canvas');
+  drawPixelSprite(canvas,p,40);
+  canvas.style.cssText='image-rendering:pixelated;width:40px;height:40px;';
+  // Try real sprite
+  const img=document.createElement('img');
+  img.style.cssText='position:absolute;inset:0;width:40px;height:40px;object-fit:contain;image-rendering:pixelated;opacity:0;transition:opacity .2s;';
+  img.onload=()=>{img.style.opacity='1';canvas.style.opacity='0';};
+  img.onerror=()=>{if(img.src.includes('black-white'))img.src=`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png`;};
+  img.src=p.id<=649?`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/${p.id}.png`:`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png`;
+  const wrap=document.createElement('div');
+  wrap.style.cssText='position:relative;width:40px;height:40px;flex-shrink:0;';
+  wrap.appendChild(canvas);wrap.appendChild(img);
+  return wrap;
+}
+
+// ═══════════════════════════════════════
+// TYPE ENGINE
+// ═══════════════════════════════════════
+const ALL_T=['Normal','Fire','Water','Electric','Grass','Ice','Fighting','Poison','Ground','Flying','Psychic','Bug','Rock','Ghost','Dragon','Dark','Steel','Fairy'];
+const TCL={Normal:'#A8A878',Fire:'#E06820',Water:'#5878F0',Electric:'#D8B800',Grass:'#5AAA38',Ice:'#78C0C0',Fighting:'#A02020',Poison:'#8030A8',Ground:'#C09040',Flying:'#9080E0',Psychic:'#E04878',Bug:'#8A9A18',Rock:'#988828',Ghost:'#605898',Dragon:'#6030E0',Dark:'#584038',Steel:'#9898A8',Fairy:'#D07898'};
+const CHART=(()=>{
+  const t={};ALL_T.forEach(a=>{t[a]={};ALL_T.forEach(d=>t[a][d]=1)});
+  [['Fire',['Grass','Ice','Bug','Steel']],['Water',['Fire','Ground','Rock']],['Electric',['Water','Flying']],['Grass',['Water','Ground','Rock']],['Ice',['Grass','Ground','Flying','Dragon']],['Fighting',['Normal','Ice','Rock','Dark','Steel']],['Poison',['Grass','Fairy']],['Ground',['Fire','Electric','Poison','Rock','Steel']],['Flying',['Grass','Fighting','Bug']],['Psychic',['Fighting','Poison']],['Bug',['Grass','Psychic','Dark']],['Rock',['Fire','Ice','Flying','Bug']],['Ghost',['Ghost','Psychic']],['Dragon',['Dragon']],['Dark',['Psychic','Ghost']],['Steel',['Ice','Rock','Fairy']],['Fairy',['Fighting','Dragon','Dark']]
+  ].forEach(([a,ds])=>ds.forEach(d=>t[a][d]=2));
+  [['Normal',['Rock','Steel']],['Fire',['Fire','Water','Rock','Dragon']],['Water',['Water','Grass','Dragon']],['Electric',['Electric','Grass','Dragon']],['Grass',['Fire','Grass','Poison','Flying','Bug','Dragon','Steel']],['Ice',['Water','Ice']],['Fighting',['Poison','Flying','Psychic','Bug','Fairy']],['Poison',['Poison','Ground','Rock','Ghost']],['Ground',['Grass','Bug']],['Flying',['Electric','Rock','Steel']],['Psychic',['Psychic','Steel']],['Bug',['Fire','Fighting','Flying','Ghost','Steel','Fairy']],['Rock',['Fighting','Ground','Steel']],['Ghost',['Dark']],['Dragon',['Steel']],['Dark',['Fighting','Dark','Fairy']],['Steel',['Fire','Water','Electric','Steel']],['Fairy',['Fire','Poison','Steel']]
+  ].forEach(([a,ds])=>ds.forEach(d=>t[a][d]=0.5));
+  [['Normal',['Ghost']],['Electric',['Ground']],['Fighting',['Ghost']],['Poison',['Steel']],['Ground',['Flying']],['Psychic',['Dark']],['Ghost',['Normal']],['Dragon',['Fairy']]
+  ].forEach(([a,ds])=>ds.forEach(d=>t[a][d]=0));
+  return t;
+})();
+function defEff(types){const r={};ALL_T.forEach(a=>{let m=1;types.forEach(d=>m*=(CHART[a][d]??1));if(m!==1)r[a]=m});return r;}
+function atkEff(aT,dT){let b=1;aT.forEach(a=>{let m=1;dT.forEach(d=>m*=(CHART[a][d]??1));if(m>b)b=m});return b;}
+
+// ═══════════════════════════════════════
+// NATURES & ITEMS
+// ═══════════════════════════════════════
+const NAT={Hardy:{},Adamant:{p:'atk',m:'spa'},Modest:{p:'spa',m:'atk'},Timid:{p:'spe',m:'atk'},Jolly:{p:'spe',m:'spa'},Bold:{p:'def',m:'atk'},Calm:{p:'spd',m:'atk'},Careful:{p:'spd',m:'spa'},Impish:{p:'def',m:'spa'},Brave:{p:'atk',m:'spe'},Quiet:{p:'spa',m:'spe'},Relaxed:{p:'def',m:'spe'}};
+function nm(n,s){const x=NAT[n]||{};return x.p===s?1.1:x.m===s?0.9:1;}
+function withN(b,nat,s){return s==='hp'?b:Math.floor(b*nm(nat,s));}
+function itmA(i,c){return i==='Choice Band'&&c==='ph'?1.5:i==='Choice Specs'&&c==='sp'?1.5:i==='Life Orb'?1.3:1;}
+function itmS(i){return i==='Choice Scarf'?1.5:1;}
+const SC={hp:'#E05050',atk:'#E09040',def:'#D0C040',spa:'#6080E0',spd:'#60C060',spe:'#E060A0'};
+const SL={hp:'HP',atk:'ATK',def:'DEF',spa:'SPA',spd:'SPD',spe:'SPE'};
+const SR_T=['Fire','Flying','Ice','Bug'];
+const TIER_C={Uber:'#8040E0',OU:'#3B5BDB',UU:'#2A9A60',RU:'#C06010',LC:'#C09000',NFE:'#444'};
+
+// ═══════════════════════════════════════
+// DAMAGE CALC
+// ═══════════════════════════════════════
+function l50(base,nat,stat){
+  if(stat==='hp')return Math.floor((2*base+31)*50/100)+60;
+  return Math.floor(Math.floor((2*base+31)*50/100+5)*nm(nat,stat));
+}
+function calcDmg(aBase,dHp,dDef,aN,dN,cat,item,eff,weather,terrain,boost,scr){
+  let atk=l50(aBase,aN,cat==='ph'?'atk':'spa');
+  let def=l50(dDef,dN,cat==='ph'?'def':'spd');
+  const hp=l50(dHp,dN,'hp');
+  const bM=[0.5,0.67,1,1.5,2,2.5,3][Math.min(6,Math.max(0,parseInt(boost||0)+2))];
+  atk=Math.floor(atk*bM*itmA(item,cat));
+  def=Math.floor(def*(scr==='screens'?0.67:scr==='reflect'&&cat==='ph'?0.67:scr==='lightscreen'&&cat==='sp'?0.67:1));
+  const wM=weather==='rain'&&cat==='sp'?1.5:weather==='sun'&&cat==='sp'?1.5:1;
+  const tM=terrain==='electric'&&cat==='sp'?1.3:terrain==='grassy'&&cat==='ph'?1.3:1;
+  const base_=(22*90*atk/def)/50+2;
+  const mx=Math.floor(base_*1.5*Math.max(eff,.01)*wM*tM);
+  const mn=Math.floor(mx*.85);
+  return{min:Math.min(200,Math.round(mn/hp*100)),max:Math.min(200,Math.round(mx/hp*100))};
+}
+
+// ═══════════════════════════════════════
+// EV PRESETS
+// ═══════════════════════════════════════
+const EV_P={offensive:{hp:0,atk:252,def:0,spa:4,spd:0,spe:252},'bulky-off':{hp:72,atk:252,def:0,spa:4,spd:0,spe:180},defensive:{hp:252,atk:0,def:252,spa:4,spd:0,spe:0},speed:{hp:4,atk:0,def:0,spa:252,spd:0,spe:252}};
+
+// ═══════════════════════════════════════
+// POKEMON DATA (80 Pokemon, Gen I-IX)
+// ═══════════════════════════════════════
+const PKM=[
+// GEN I
+{n:'Venusaur',id:3,g:1,types:['Grass','Poison'],tier:'OU',usage:22,ability:'Chlorophyll',sugN:'Modest',sugI:'Life Orb',stats:{hp:80,atk:82,def:83,spa:100,spd:100,spe:80},role:'Sun Sweeper',moves:[{n:'Giga Drain',t:'Grass',c:'sp'},{n:'Sludge Bomb',t:'Poison',c:'sp'},{n:'Synthesis',t:'Grass',c:'st'},{n:'Sleep Powder',t:'Grass',c:'st'}],counters:['Charizard','Scizor','Dragapult'],tip:'Dominant in Sun — Chlorophyll doubles speed. Sleep Powder neuters threats. Sludge Bomb pressures Fairy types.'},
+{n:'Charizard',id:6,g:1,types:['Fire','Flying'],tier:'OU',usage:28,ability:'Blaze',sugN:'Timid',sugI:'Choice Specs',stats:{hp:78,atk:84,def:78,spa:109,spd:85,spe:100},role:'Special Sweeper',moves:[{n:'Flamethrower',t:'Fire',c:'sp'},{n:'Air Slash',t:'Flying',c:'sp'},{n:'Dragon Pulse',t:'Dragon',c:'sp'},{n:'Solar Beam',t:'Grass',c:'sp'}],counters:['Rotom-W','Blastoise','Corviknight'],tip:'Choice Specs or Life Orb. Beware Stealth Rock — always bring hazard removal. Excels in Sun.'},
+{n:'Blastoise',id:9,g:1,types:['Water'],tier:'UU',usage:15,ability:'Torrent',sugN:'Bold',sugI:'Leftovers',stats:{hp:79,atk:83,def:100,spa:85,spd:105,spe:78},role:'Bulky Wall',moves:[{n:'Scald',t:'Water',c:'sp'},{n:'Ice Beam',t:'Ice',c:'sp'},{n:'Earthquake',t:'Ground',c:'ph'},{n:'Rapid Spin',t:'Normal',c:'ph'}],counters:['Venusaur','Alakazam','Rotom-W'],tip:'Defensive pivot. Scald burns physical attackers. Rapid Spin keeps field clear.'},
+{n:'Pikachu',id:25,g:1,types:['Electric'],tier:'LC',usage:3,ability:'Static',sugN:'Timid',sugI:'Light Ball',stats:{hp:35,atk:55,def:40,spa:50,spd:50,spe:90},role:'Fast Attacker',moves:[{n:'Thunderbolt',t:'Electric',c:'sp'},{n:'Volt Tackle',t:'Electric',c:'ph'},{n:'Quick Attack',t:'Normal',c:'ph'},{n:'Iron Tail',t:'Steel',c:'ph'}],counters:['Garchomp','Landorus-T','Snorlax'],tip:'Fast pivot. Ground types wall it entirely. Quick Attack provides priority chip.'},
+{n:'Raichu',id:26,g:1,types:['Electric'],tier:'UU',usage:5,ability:'Static',sugN:'Timid',sugI:'Life Orb',stats:{hp:60,atk:90,def:55,spa:90,spd:80,spe:110},role:'Fast Attacker',moves:[{n:'Thunderbolt',t:'Electric',c:'sp'},{n:'Focus Blast',t:'Fighting',c:'sp'},{n:'Volt Tackle',t:'Electric',c:'ph'},{n:'Nasty Plot',t:'Dark',c:'st'}],counters:['Garchomp','Landorus-T','Blastoise'],tip:'Faster and stronger than Pikachu. Nasty Plot gives special attack power.'},
+{n:'Clefable',id:36,g:1,types:['Fairy'],tier:'OU',usage:30,ability:'Magic Guard',sugN:'Bold',sugI:'Leftovers',stats:{hp:95,atk:70,def:73,spa:95,spd:90,spe:60},role:'Cleric / Wall',moves:[{n:'Moonblast',t:'Fairy',c:'sp'},{n:'Soft-Boiled',t:'Normal',c:'st'},{n:'Thunder Wave',t:'Electric',c:'st'},{n:'Stealth Rock',t:'Rock',c:'st'}],counters:['Gengar','Metagross','Scizor'],tip:'Magic Guard blocks all passive damage. Excellent Stealth Rock setter and cleric. Moonblast handles Dragon and Dark threats.'},
+{n:'Arcanine',id:59,g:1,types:['Fire'],tier:'OU',usage:18,ability:'Intimidate',sugN:'Adamant',sugI:'Choice Band',stats:{hp:90,atk:110,def:80,spa:100,spd:80,spe:95},role:'Intimidate Pivot',moves:[{n:'Flare Blitz',t:'Fire',c:'ph'},{n:'Extreme Speed',t:'Normal',c:'ph'},{n:'Wild Charge',t:'Electric',c:'ph'},{n:'Close Combat',t:'Fighting',c:'ph'}],counters:['Blastoise','Rotom-W','Tyranitar'],tip:'Intimidate on entry. Flare Blitz plus Extreme Speed covers most priorities. SR weak — keep hazards off.'},
+{n:'Alakazam',id:65,g:1,types:['Psychic'],tier:'UU',usage:18,ability:'Magic Guard',sugN:'Timid',sugI:'Life Orb',stats:{hp:55,atk:50,def:45,spa:135,spd:95,spe:120},role:'Glass Cannon',moves:[{n:'Psychic',t:'Psychic',c:'sp'},{n:'Shadow Ball',t:'Ghost',c:'sp'},{n:'Focus Blast',t:'Fighting',c:'sp'},{n:'Energy Ball',t:'Grass',c:'sp'}],counters:['Tyranitar','Gengar','Scizor'],tip:'Magic Guard + Life Orb = zero recoil. Nuclear SpA with top Speed. One strong hit ends it.'},
+{n:'Machamp',id:68,g:1,types:['Fighting'],tier:'UU',usage:10,ability:'No Guard',sugN:'Adamant',sugI:'Assault Vest',stats:{hp:90,atk:130,def:80,spa:65,spd:85,spe:55},role:'Physical Wallbreaker',moves:[{n:'Dynamic Punch',t:'Fighting',c:'ph'},{n:'Knock Off',t:'Dark',c:'ph'},{n:'Stone Edge',t:'Rock',c:'ph'},{n:'Thunder Punch',t:'Electric',c:'ph'}],counters:['Togekiss','Gengar','Dragapult'],tip:'No Guard makes Dynamic Punch 100% accurate — confusion is brutal. Knock Off removes items. Psychic moves are the main danger.'},
+{n:'Gyarados',id:130,g:1,types:['Water','Flying'],tier:'OU',usage:29,ability:'Intimidate',sugN:'Adamant',sugI:'Lum Berry',stats:{hp:95,atk:125,def:79,spa:60,spd:100,spe:81},role:'Intimidate Pivot',moves:[{n:'Waterfall',t:'Water',c:'ph'},{n:'Ice Fang',t:'Ice',c:'ph'},{n:'Crunch',t:'Dark',c:'ph'},{n:'Dragon Dance',t:'Dragon',c:'st'}],counters:['Rotom-W','Lucario','Venusaur'],tip:'Intimidate softens physical threats. Dragon Dance sweeps. 4× Electric weakness — scout before setting up.'},
+{n:'Lapras',id:131,g:1,types:['Water','Ice'],tier:'RU',usage:8,ability:'Water Absorb',sugN:'Modest',sugI:'Choice Specs',stats:{hp:130,atk:85,def:80,spa:85,spd:95,spe:60},role:'Bulky Attacker',moves:[{n:'Freeze-Dry',t:'Ice',c:'sp'},{n:'Surf',t:'Water',c:'sp'},{n:'Thunderbolt',t:'Electric',c:'sp'},{n:'Ice Beam',t:'Ice',c:'sp'}],counters:['Venusaur','Lucario','Metagross'],tip:'Freeze-Dry hits Water types for super effective damage — unique in the game. Absorbs Water moves for recovery.'},
+{n:'Snorlax',id:143,g:1,types:['Normal'],tier:'UU',usage:12,ability:'Thick Fat',sugN:'Careful',sugI:'Leftovers',stats:{hp:160,atk:110,def:65,spa:65,spd:110,spe:30},role:'Special Wall',moves:[{n:'Body Slam',t:'Normal',c:'ph'},{n:'Crunch',t:'Dark',c:'ph'},{n:'Earthquake',t:'Ground',c:'ph'},{n:'Curse',t:'Ghost',c:'st'}],counters:['Lucario','Garchomp','Venusaur'],tip:'Enormous HP + SpD. Thick Fat halves Fire and Ice damage. Curse makes it unstoppable. Almost impossible to 2HKO specially.'},
+{n:'Articuno',id:144,g:1,types:['Ice','Flying'],tier:'RU',usage:6,ability:'Pressure',sugN:'Timid',sugI:'Leftovers',stats:{hp:90,atk:85,def:100,spa:95,spd:125,spe:85},role:'Defensive Pivot',moves:[{n:'Ice Beam',t:'Ice',c:'sp'},{n:'Hurricane',t:'Flying',c:'sp'},{n:'Roost',t:'Flying',c:'st'},{n:'Defog',t:'Flying',c:'st'}],counters:['Tyranitar','Metagross','Scizor'],tip:'Strong mixed bulk. Ice Beam and Hurricane hit very hard. Pressure stalls PP. SR weak — bring hazard removal support.'},
+{n:'Zapdos',id:145,g:1,types:['Electric','Flying'],tier:'OU',usage:22,ability:'Pressure',sugN:'Timid',sugI:'Heavy-Duty Boots',stats:{hp:90,atk:90,def:85,spa:125,spd:90,spe:100},role:'Offensive Pivot',moves:[{n:'Thunderbolt',t:'Electric',c:'sp'},{n:'Hurricane',t:'Flying',c:'sp'},{n:'Heat Wave',t:'Fire',c:'sp'},{n:'Defog',t:'Flying',c:'st'}],counters:['Tyranitar','Blastoise','Garchomp'],tip:'Excellent offensive pivot. SR immune with Heavy-Duty Boots. Hurricane plus Thunderbolt are near-unresisted in Rain. Pressure is excellent for PP stalling.'},
+{n:'Dragonite',id:149,g:1,types:['Dragon','Flying'],tier:'OU',usage:24,ability:'Multiscale',sugN:'Adamant',sugI:'Lum Berry',stats:{hp:91,atk:134,def:95,spa:100,spd:100,spe:80},role:'Setup Sweeper',moves:[{n:'Dragon Dance',t:'Dragon',c:'st'},{n:'Extreme Speed',t:'Normal',c:'ph'},{n:'Hurricane',t:'Flying',c:'sp'},{n:'Fire Punch',t:'Fire',c:'ph'}],counters:['Scizor','Togekiss','Corviknight'],tip:'Dragon Dance + Multiscale = terrifying late game. Extreme Speed bypasses priority. Keep SR off — it breaks Multiscale.'},
+{n:'Mewtwo',id:150,g:1,types:['Psychic'],tier:'Uber',usage:67,ability:'Pressure',sugN:'Timid',sugI:'Choice Specs',stats:{hp:106,atk:110,def:90,spa:154,spd:90,spe:130},role:'Legendary Wallbreaker',moves:[{n:'Psystrike',t:'Psychic',c:'sp'},{n:'Ice Beam',t:'Ice',c:'sp'},{n:'Flamethrower',t:'Fire',c:'sp'},{n:'Aura Sphere',t:'Fighting',c:'sp'}],counters:['Tyranitar','Snorlax','Corviknight'],tip:'Psystrike bypasses SpD walls. Near-perfect coverage. Calm Mind variants become unkillable. Rarely has a bad matchup.'},
+{n:'Mew',id:151,g:1,types:['Psychic'],tier:'OU',usage:14,ability:'Synchronize',sugN:'Jolly',sugI:'Leftovers',stats:{hp:100,atk:100,def:100,spa:100,spd:100,spe:100},role:'Utility',moves:[{n:'Swords Dance',t:'Normal',c:'st'},{n:'Knock Off',t:'Dark',c:'ph'},{n:'Soft-Boiled',t:'Normal',c:'st'},{n:'Stealth Rock',t:'Rock',c:'st'}],counters:['Tyranitar','Scizor','Dragapult'],tip:'Perfect base stats across the board. Can run almost any role. Stealth Rock utility is extremely reliable. Versatile and unpredictable.'},
+// GEN II
+{n:'Typhlosion',id:157,g:2,types:['Fire'],tier:'UU',usage:10,ability:'Blaze',sugN:'Timid',sugI:'Choice Specs',stats:{hp:78,atk:84,def:78,spa:109,spd:85,spe:100},role:'Special Attacker',moves:[{n:'Flamethrower',t:'Fire',c:'sp'},{n:'Focus Blast',t:'Fighting',c:'sp'},{n:'Shadow Ball',t:'Ghost',c:'sp'},{n:'Eruption',t:'Fire',c:'sp'}],counters:['Blastoise','Rotom-W','Tyranitar'],tip:'High SpA with good Speed. Eruption at full HP is devastating. SR weak — bring hazard removal. Focus Blast handles Rock and Normal types.'},
+{n:'Feraligatr',id:160,g:2,types:['Water'],tier:'UU',usage:12,ability:'Sheer Force',sugN:'Adamant',sugI:'Life Orb',stats:{hp:85,atk:105,def:100,spa:79,spd:83,spe:78},role:'Bulky Attacker',moves:[{n:'Waterfall',t:'Water',c:'ph'},{n:'Dragon Dance',t:'Dragon',c:'st'},{n:'Ice Punch',t:'Ice',c:'ph'},{n:'Crunch',t:'Dark',c:'ph'}],counters:['Venusaur','Rotom-W','Alakazam'],tip:'Sheer Force + Life Orb boosts contact moves significantly. Dragon Dance gives sweeping potential. Solid bulk makes it hard to revenge kill.'},
+{n:'Espeon',id:196,g:2,types:['Psychic'],tier:'UU',usage:14,ability:'Magic Bounce',sugN:'Timid',sugI:'Life Orb',stats:{hp:65,atk:65,def:60,spa:130,spd:95,spe:110},role:'Special Attacker',moves:[{n:'Psyshock',t:'Psychic',c:'sp'},{n:'Shadow Ball',t:'Ghost',c:'sp'},{n:'Dazzling Gleam',t:'Fairy',c:'sp'},{n:'Morning Sun',t:'Normal',c:'st'}],counters:['Tyranitar','Gengar','Scizor'],tip:'Magic Bounce reflects status and hazards. High SpA and Speed. Psyshock punishes SpD walls. Fragile physically — avoid contact.'},
+{n:'Umbreon',id:197,g:2,types:['Dark'],tier:'RU',usage:9,ability:'Synchronize',sugN:'Careful',sugI:'Leftovers',stats:{hp:95,atk:65,def:110,spa:60,spd:130,spe:65},role:'Special Wall',moves:[{n:'Foul Play',t:'Dark',c:'ph'},{n:'Moonlight',t:'Normal',c:'st'},{n:'Wish',t:'Normal',c:'st'},{n:'Toxic',t:'Poison',c:'st'}],counters:['Lucario','Gardevoir','Gengar'],tip:'Exceptional special bulk. Wish passes huge HP to teammates. Toxic plus Moonlight stalls effectively. Foul Play punishes physical attackers.'},
+{n:'Scizor',id:212,g:2,types:['Bug','Steel'],tier:'OU',usage:44,ability:'Technician',sugN:'Adamant',sugI:'Choice Band',stats:{hp:70,atk:130,def:100,spa:55,spd:80,spe:65},role:'Priority Attacker',moves:[{n:'Bullet Punch',t:'Steel',c:'ph'},{n:'U-turn',t:'Bug',c:'ph'},{n:'Superpower',t:'Fighting',c:'ph'},{n:'Roost',t:'Flying',c:'st'}],counters:['Charizard','Rotom-W','Landorus-T'],tip:'Technician Bullet Punch hits hard. U-turn keeps momentum. Single Fire weakness — keep SR off your side.'},
+{n:'Heracross',id:214,g:2,types:['Bug','Fighting'],tier:'UU',usage:12,ability:'Guts',sugN:'Adamant',sugI:'Flame Orb',stats:{hp:80,atk:125,def:75,spa:40,spd:95,spe:85},role:'Guts Attacker',moves:[{n:'Close Combat',t:'Fighting',c:'ph'},{n:'Megahorn',t:'Bug',c:'ph'},{n:'Knock Off',t:'Dark',c:'ph'},{n:'Stone Edge',t:'Rock',c:'ph'}],counters:['Togekiss','Gengar','Gardevoir'],tip:'Flame Orb activates Guts boosting Attack 50%. Megahorn is ferociously powerful. Knock Off removes items. Flying and Psychic types are the main danger.'},
+{n:'Suicune',id:245,g:2,types:['Water'],tier:'OU',usage:18,ability:'Pressure',sugN:'Calm',sugI:'Leftovers',stats:{hp:100,atk:75,def:115,spa:90,spd:115,spe:85},role:'Calm Mind Wall',moves:[{n:'Scald',t:'Water',c:'sp'},{n:'Ice Beam',t:'Ice',c:'sp'},{n:'Calm Mind',t:'Psychic',c:'st'},{n:'Rest',t:'Normal',c:'st'}],counters:['Venusaur','Alakazam','Rotom-W'],tip:'Exceptional bulk on both sides. Calm Mind makes it progressively harder to break. Scald burns help wear down physical threats. Rest heals status and HP.'},
+{n:'Tyranitar',id:248,g:2,types:['Rock','Dark'],tier:'OU',usage:47,ability:'Sand Stream',sugN:'Jolly',sugI:'Choice Band',stats:{hp:100,atk:134,def:110,spa:95,spd:100,spe:61},role:'Sand Setter',moves:[{n:'Stone Edge',t:'Rock',c:'ph'},{n:'Crunch',t:'Dark',c:'ph'},{n:'Earthquake',t:'Ground',c:'ph'},{n:'Dragon Dance',t:'Dragon',c:'st'}],counters:['Lucario','Garchomp','Venusaur'],tip:'Sets Sandstorm boosting its own SpD 50%. Dragon Dance is terrifying. Fighting weakness — scout before committing.'},
+{n:'Lugia',id:249,g:2,types:['Psychic','Flying'],tier:'Uber',usage:40,ability:'Multiscale',sugN:'Calm',sugI:'Leftovers',stats:{hp:106,atk:90,def:130,spa:90,spd:154,spe:110},role:'Defensive Titan',moves:[{n:'Aeroblast',t:'Flying',c:'sp'},{n:'Ice Beam',t:'Ice',c:'sp'},{n:'Roost',t:'Flying',c:'st'},{n:'Whirlwind',t:'Normal',c:'st'}],counters:['Tyranitar','Darkrai','Rayquaza'],tip:'Multiscale plus insane bulk makes it nearly unkillable. Aeroblast has a high critical hit ratio. Whirlwind phazess setup sweepers. Iconic Uber tier wall.'},
+// GEN III
+{n:'Blaziken',id:257,g:3,types:['Fire','Fighting'],tier:'Uber',usage:35,ability:'Speed Boost',sugN:'Adamant',sugI:'Life Orb',stats:{hp:80,atk:120,def:70,spa:110,spd:70,spe:80},role:'Speed Boost Sweeper',moves:[{n:'Flare Blitz',t:'Fire',c:'ph'},{n:'High Jump Kick',t:'Fighting',c:'ph'},{n:'Stone Edge',t:'Rock',c:'ph'},{n:'Swords Dance',t:'Normal',c:'st'}],counters:['Blastoise','Togekiss','Gardevoir'],tip:'Speed Boost each turn makes it progressively faster. Swords Dance plus HJK is devastating. After 2 Speed Boosts almost nothing outruns it.'},
+{n:'Swampert',id:260,g:3,types:['Water','Ground'],tier:'OU',usage:20,ability:'Torrent',sugN:'Adamant',sugI:'Leftovers',stats:{hp:100,atk:110,def:90,spa:85,spd:90,spe:60},role:'Bulky Pivot',moves:[{n:'Earthquake',t:'Ground',c:'ph'},{n:'Waterfall',t:'Water',c:'ph'},{n:'Ice Punch',t:'Ice',c:'ph'},{n:'Stealth Rock',t:'Rock',c:'st'}],counters:['Venusaur','Rotom-W','Alakazam'],tip:'Only weak to Grass. Excellent Stealth Rock setter. Earthquake plus Waterfall is near-unresisted coverage. Solid physical bulk.'},
+{n:'Gardevoir',id:282,g:3,types:['Psychic','Fairy'],tier:'RU',usage:19,ability:'Trace',sugN:'Timid',sugI:'Choice Specs',stats:{hp:68,atk:65,def:65,spa:125,spd:115,spe:80},role:'Calm Mind Sweeper',moves:[{n:'Moonblast',t:'Fairy',c:'sp'},{n:'Psyshock',t:'Psychic',c:'sp'},{n:'Focus Blast',t:'Fighting',c:'sp'},{n:'Calm Mind',t:'Psychic',c:'st'}],counters:['Scizor','Metagross','Gengar'],tip:'Moonblast + Psyshock nearly unresisted. Calm Mind makes it dominant. Trace copies opponent abilities. Vulnerable to Steel and Poison.'},
+{n:'Breloom',id:286,g:3,types:['Grass','Fighting'],tier:'OU',usage:16,ability:'Technician',sugN:'Adamant',sugI:'Focus Sash',stats:{hp:60,atk:130,def:80,spa:60,spd:60,spe:70},role:'Spore Lead',moves:[{n:'Spore',t:'Grass',c:'st'},{n:'Mach Punch',t:'Fighting',c:'ph'},{n:'Bullet Seed',t:'Grass',c:'ph'},{n:'Rock Tomb',t:'Rock',c:'ph'}],counters:['Charizard','Togekiss','Dragapult'],tip:'100% accurate Spore is the best move in the game. Technician Mach Punch provides priority. Focus Sash ensures it gets Spore off as a lead.'},
+{n:'Flygon',id:330,g:3,types:['Dragon','Ground'],tier:'UU',usage:10,ability:'Levitate',sugN:'Jolly',sugI:'Choice Scarf',stats:{hp:80,atk:100,def:80,spa:80,spd:80,spe:100},role:'Pivot / Revenge Killer',moves:[{n:'Earthquake',t:'Ground',c:'ph'},{n:'Outrage',t:'Dragon',c:'ph'},{n:'U-turn',t:'Bug',c:'ph'},{n:'Fire Punch',t:'Fire',c:'ph'}],counters:['Togekiss','Corviknight','Dragapult'],tip:'Levitate removes Ground weakness. Choice Scarf makes it an excellent revenge killer. U-turn keeps momentum against switch-ins.'},
+{n:'Salamence',id:373,g:3,types:['Dragon','Flying'],tier:'OU',usage:33,ability:'Intimidate',sugN:'Jolly',sugI:'Lum Berry',stats:{hp:95,atk:135,def:80,spa:110,spd:80,spe:100},role:'Versatile Wallbreaker',moves:[{n:'Dragon Dance',t:'Dragon',c:'st'},{n:'Dragon Claw',t:'Dragon',c:'ph'},{n:'Earthquake',t:'Ground',c:'ph'},{n:'Flamethrower',t:'Fire',c:'sp'}],counters:['Scizor','Corviknight','Metagross'],tip:'Hits hard on both sides. Dragon Dance at 135 Attack is devastating. Ice moves are the critical danger.'},
+{n:'Metagross',id:376,g:3,types:['Steel','Psychic'],tier:'OU',usage:38,ability:'Clear Body',sugN:'Adamant',sugI:'Choice Band',stats:{hp:80,atk:135,def:130,spa:95,spd:90,spe:70},role:'Physical Wallbreaker',moves:[{n:'Meteor Mash',t:'Steel',c:'ph'},{n:'Earthquake',t:'Ground',c:'ph'},{n:'Ice Punch',t:'Ice',c:'ph'},{n:'Stealth Rock',t:'Rock',c:'st'}],counters:['Charizard','Gengar','Rotom-W'],tip:'Outstanding bulk plus raw power. Clear Body blocks Intimidate. Excellent Stealth Rock lead with immediate threat.'},
+{n:'Rayquaza',id:384,g:3,types:['Dragon','Flying'],tier:'Uber',usage:72,ability:'Air Lock',sugN:'Adamant',sugI:'Life Orb',stats:{hp:105,atk:150,def:90,spa:150,spd:90,spe:95},role:'Uber Sweeper',moves:[{n:'Dragon Ascent',t:'Flying',c:'ph'},{n:'Outrage',t:'Dragon',c:'ph'},{n:'Extreme Speed',t:'Normal',c:'ph'},{n:'Dragon Dance',t:'Dragon',c:'st'}],counters:['Scizor','Metagross','Clefable'],tip:'One of the most powerful Pokemon ever. 150/150 offensive stats are absurd. Air Lock removes weather. Dragon Ascent is the strongest Flying move in the game.'},
+// GEN IV
+{n:'Lucario',id:448,g:4,types:['Fighting','Steel'],tier:'OU',usage:35,ability:'Adaptability',sugN:'Timid',sugI:'Life Orb',stats:{hp:70,atk:110,def:70,spa:115,spd:70,spe:90},role:'Mixed Sweeper',moves:[{n:'Close Combat',t:'Fighting',c:'ph'},{n:'Flash Cannon',t:'Steel',c:'sp'},{n:'Bullet Punch',t:'Steel',c:'ph'},{n:'Nasty Plot',t:'Dark',c:'st'}],counters:['Charizard','Garchomp','Rotom-W'],tip:'Adaptability doubles STAB. Fighting/Steel resisted by almost nothing. Nasty Plot + Aura Sphere demolishes defensive cores.'},
+{n:'Garchomp',id:445,g:4,types:['Dragon','Ground'],tier:'OU',usage:52,ability:'Rough Skin',sugN:'Jolly',sugI:'Rocky Helmet',stats:{hp:108,atk:130,def:95,spa:80,spd:85,spe:102},role:'Physical Sweeper',moves:[{n:'Earthquake',t:'Ground',c:'ph'},{n:'Dragon Claw',t:'Dragon',c:'ph'},{n:'Stone Edge',t:'Rock',c:'ph'},{n:'Swords Dance',t:'Normal',c:'st'}],counters:['Togekiss','Corviknight','Hatterene'],tip:'Tier-defining threat. Swords Dance at +2 sweeps entire teams. 4× Ice weakness — predict and switch.'},
+{n:'Togekiss',id:468,g:4,types:['Fairy','Flying'],tier:'OU',usage:41,ability:'Serene Grace',sugN:'Modest',sugI:'Choice Specs',stats:{hp:85,atk:50,def:95,spa:120,spd:115,spe:80},role:'Flinch Striker',moves:[{n:'Air Slash',t:'Flying',c:'sp'},{n:'Dazzling Gleam',t:'Fairy',c:'sp'},{n:'Aura Sphere',t:'Fighting',c:'sp'},{n:'Roost',t:'Flying',c:'st'}],counters:['Tyranitar','Metagross','Rotom-W'],tip:'Serene Grace gives Air Slash 60% flinch rate. Dazzling Gleam nukes Dragons. Thunder Wave + flinch is ruthless.'},
+{n:'Gallade',id:475,g:4,types:['Psychic','Fighting'],tier:'RU',usage:11,ability:'Justified',sugN:'Adamant',sugI:'Choice Scarf',stats:{hp:68,atk:125,def:65,spa:65,spd:115,spe:80},role:'Physical Attacker',moves:[{n:'Close Combat',t:'Fighting',c:'ph'},{n:'Psycho Cut',t:'Psychic',c:'ph'},{n:'Knock Off',t:'Dark',c:'ph'},{n:'Stone Edge',t:'Rock',c:'ph'}],counters:['Gengar','Togekiss','Dragapult'],tip:'Psychic/Fighting is one of the best offensive combinations. Justified activates on Dark moves. Scarf gives revenge kill utility.'},
+{n:'Rotom-W',id:479,g:4,types:['Electric','Water'],tier:'OU',usage:55,ability:'Levitate',sugN:'Bold',sugI:'Leftovers',stats:{hp:50,atk:65,def:107,spa:105,spd:107,spe:86},role:'Defensive Pivot',moves:[{n:'Hydro Pump',t:'Water',c:'sp'},{n:'Volt Switch',t:'Electric',c:'sp'},{n:'Will-O-Wisp',t:'Fire',c:'st'},{n:'Pain Split',t:'Normal',c:'st'}],counters:['Venusaur','Alakazam','Tyranitar'],tip:'Gold standard pivot. Levitate = no Ground weakness. Volt Switch keeps momentum. Will-O-Wisp cripples physical attackers. Only weak to Grass.'},
+{n:'Cresselia',id:488,g:4,types:['Psychic'],tier:'OU',usage:17,ability:'Levitate',sugN:'Bold',sugI:'Leftovers',stats:{hp:120,atk:70,def:120,spa:75,spd:130,spe:85},role:'Defensive Bulk',moves:[{n:'Psyshock',t:'Psychic',c:'sp'},{n:'Moonblast',t:'Fairy',c:'sp'},{n:'Moonlight',t:'Normal',c:'st'},{n:'Trick Room',t:'Psychic',c:'st'}],counters:['Gengar','Scizor','Tyranitar'],tip:'Exceptional mixed bulk with 120/120/130 defenses. Moonlight recovers in any weather. Trick Room utility is top tier. Levitate grants Ground immunity.'},
+// GEN V
+{n:'Zoroark',id:571,g:5,types:['Dark'],tier:'UU',usage:12,ability:'Illusion',sugN:'Timid',sugI:'Life Orb',stats:{hp:60,atk:105,def:60,spa:120,spd:60,spe:105},role:'Illusion Attacker',moves:[{n:'Night Daze',t:'Dark',c:'sp'},{n:'Focus Blast',t:'Fighting',c:'sp'},{n:'Flamethrower',t:'Fire',c:'sp'},{n:'Shadow Ball',t:'Ghost',c:'sp'}],counters:['Scizor','Blissey','Clefable'],tip:'Illusion disguises it as the last Pokemon in your party. Creates powerful mindgames. High SpA but very fragile physically.'},
+{n:'Chandelure',id:609,g:5,types:['Ghost','Fire'],tier:'UU',usage:15,ability:'Flash Fire',sugN:'Timid',sugI:'Choice Scarf',stats:{hp:60,atk:55,def:90,spa:145,spd:90,spe:80},role:'Special Nuker',moves:[{n:'Shadow Ball',t:'Ghost',c:'sp'},{n:'Flamethrower',t:'Fire',c:'sp'},{n:'Energy Ball',t:'Grass',c:'sp'},{n:'Trick',t:'Psychic',c:'st'}],counters:['Blastoise','Rotom-W','Tyranitar'],tip:'145 SpA is among the highest in the game. Flash Fire absorbs Flamethrowers for teammates. Trick cripples defensive Pokemon with Choice Scarf.'},
+{n:'Hydreigon',id:635,g:5,types:['Dark','Dragon'],tier:'OU',usage:22,ability:'Levitate',sugN:'Timid',sugI:'Choice Specs',stats:{hp:92,atk:105,def:90,spa:125,spd:90,spe:98},role:'Special Attacker',moves:[{n:'Draco Meteor',t:'Dragon',c:'sp'},{n:'Dark Pulse',t:'Dark',c:'sp'},{n:'Flamethrower',t:'Fire',c:'sp'},{n:'U-turn',t:'Bug',c:'ph'}],counters:['Clefable','Togekiss','Gardevoir'],tip:'Levitate grants Ground immunity. Draco Meteor hits absurdly hard. Fairy types wall it entirely — scout carefully before using Dragon moves.'},
+{n:'Volcarona',id:637,g:5,types:['Bug','Fire'],tier:'OU',usage:28,ability:'Flame Body',sugN:'Timid',sugI:'Leftovers',stats:{hp:85,atk:60,def:65,spa:135,spd:105,spe:100},role:'Quiver Dance Sweeper',moves:[{n:'Quiver Dance',t:'Bug',c:'st'},{n:'Flamethrower',t:'Fire',c:'sp'},{n:'Bug Buzz',t:'Bug',c:'sp'},{n:'Giga Drain',t:'Grass',c:'sp'}],counters:['Blastoise','Tyranitar','Rotom-W'],tip:'Quiver Dance boosts SpA, SpD, and Speed all at once. After one boost it becomes extremely difficult to check. SR does 50% — always bring hazard removal.'},
+{n:'Reshiram',id:643,g:5,types:['Dragon','Fire'],tier:'Uber',usage:48,ability:'Turboblaze',sugN:'Timid',sugI:'Choice Specs',stats:{hp:100,atk:120,def:100,spa:150,spd:100,spe:90},role:'Fire Attacker',moves:[{n:'Blue Flare',t:'Fire',c:'sp'},{n:'Draco Meteor',t:'Dragon',c:'sp'},{n:'Focus Blast',t:'Fighting',c:'sp'},{n:'Ancient Power',t:'Rock',c:'sp'}],counters:['Blastoise','Palkia','Kyogre'],tip:'Blue Flare is brutally powerful Fire move. Turboblaze ignores most abilities. 150 SpA is terrifying. Best in Sun where Blue Flare reaches catastrophic power levels.'},
+{n:'Landorus-T',id:645,g:5,types:['Ground','Flying'],tier:'OU',usage:58,ability:'Intimidate',sugN:'Jolly',sugI:'Rocky Helmet',stats:{hp:89,atk:145,def:90,spa:105,spd:80,spe:91},role:'Intimidate Pivot',moves:[{n:'Earthquake',t:'Ground',c:'ph'},{n:'Stone Edge',t:'Rock',c:'ph'},{n:'U-turn',t:'Bug',c:'ph'},{n:'Stealth Rock',t:'Rock',c:'st'}],counters:['Blastoise','Rotom-W','Corviknight'],tip:'Gold standard pivot. Intimidate every switch. Sets SR reliably. Only weak to Ice and Water — incredibly splashable.'},
+// GEN VI
+{n:'Greninja',id:658,g:6,types:['Water','Dark'],tier:'Uber',usage:45,ability:'Protean',sugN:'Timid',sugI:'Life Orb',stats:{hp:72,atk:95,def:67,spa:103,spd:71,spe:122},role:'Fast Mixed Attacker',moves:[{n:'Hydro Pump',t:'Water',c:'sp'},{n:'Ice Beam',t:'Ice',c:'sp'},{n:'Dark Pulse',t:'Dark',c:'sp'},{n:'U-turn',t:'Bug',c:'ph'}],counters:['Clefable','Togekiss','Tyranitar'],tip:'Protean gives STAB on every move used. Exceptional coverage and Speed. Extremely frail — must attack first or die. Near-perfect offensive tool.'},
+{n:'Aegislash',id:681,g:6,types:['Steel','Ghost'],tier:'Uber',usage:38,ability:'Stance Change',sugN:'Quiet',sugI:'Life Orb',stats:{hp:60,atk:50,def:150,spa:50,spd:150,spe:60},role:'Stance Changer',moves:[{n:'Shadow Ball',t:'Ghost',c:'sp'},{n:'Flash Cannon',t:'Steel',c:'sp'},{n:'King\'s Shield',t:'Steel',c:'st'},{n:'Shadow Sneak',t:'Ghost',c:'ph'}],counters:['Tyranitar','Garchomp','Landorus-T'],tip:'Unique Stance Change mechanic — 150/150 defenses in Shield Forme, high offenses in Blade Forme. King\'s Shield drops enemy Attack two stages on contact. Very hard to play around.'},
+{n:'Sylveon',id:700,g:6,types:['Fairy'],tier:'OU',usage:20,ability:'Pixilate',sugN:'Modest',sugI:'Choice Specs',stats:{hp:95,atk:65,def:65,spa:110,spd:130,spe:60},role:'Cleric / Special Attacker',moves:[{n:'Hyper Voice',t:'Normal',c:'sp'},{n:'Mystical Fire',t:'Fire',c:'sp'},{n:'Shadow Ball',t:'Ghost',c:'sp'},{n:'Wish',t:'Normal',c:'st'}],counters:['Metagross','Scizor','Gengar'],tip:'Pixilate turns Hyper Voice into a powerful Fairy move that bypasses Substitute. 130 SpD makes it a superb special wall. Wish passes significant HP to teammates.'},
+{n:'Goodra',id:706,g:6,types:['Dragon'],tier:'UU',usage:11,ability:'Gooey',sugN:'Modest',sugI:'Assault Vest',stats:{hp:90,atk:100,def:70,spa:110,spd:150,spe:80},role:'Special Wall',moves:[{n:'Draco Meteor',t:'Dragon',c:'sp'},{n:'Fire Blast',t:'Fire',c:'sp'},{n:'Sludge Wave',t:'Poison',c:'sp'},{n:'Thunderbolt',t:'Electric',c:'sp'}],counters:['Clefable','Togekiss','Gardevoir'],tip:'150 SpD with Assault Vest makes it nigh-impossible to KO specially. Gooey drops contact moves\' Speed. Draco Meteor is a powerful nuke from a defensive Pokemon.'},
+{n:'Xerneas',id:716,g:6,types:['Fairy'],tier:'Uber',usage:55,ability:'Fairy Aura',sugN:'Modest',sugI:'Power Herb',stats:{hp:126,atk:131,def:95,spa:131,spd:98,spe:99},role:'Geomancy Sweeper',moves:[{n:'Moonblast',t:'Fairy',c:'sp'},{n:'Focus Blast',t:'Fighting',c:'sp'},{n:'Geomancy',t:'Fairy',c:'st'},{n:'Thunder',t:'Electric',c:'sp'}],counters:['Metagross','Scizor','Aegislash'],tip:'Geomancy with Power Herb in one turn — +2 SpA, SpD, and Speed immediately. Fairy Aura boosts all Fairy moves 33%. One of the scariest setup sweepers in the game.'},
+{n:'Yveltal',id:717,g:6,types:['Dark','Flying'],tier:'Uber',usage:52,ability:'Dark Aura',sugN:'Timid',sugI:'Choice Scarf',stats:{hp:126,atk:131,def:95,spa:131,spd:98,spe:99},role:'Dark Attacker',moves:[{n:'Oblivion Wing',t:'Flying',c:'sp'},{n:'Dark Pulse',t:'Dark',c:'sp'},{n:'Foul Play',t:'Dark',c:'ph'},{n:'U-turn',t:'Bug',c:'ph'}],counters:['Xerneas','Clefable','Metagross'],tip:'Dark Aura boosts all Dark moves 33%. Oblivion Wing restores 75% of damage dealt as HP. Exceptional mixed bulk makes it nearly impossible to safely KO.'},
+// GEN VII
+{n:'Mimikyu',id:778,g:7,types:['Ghost','Fairy'],tier:'OU',usage:20,ability:'Disguise',sugN:'Jolly',sugI:'Life Orb',stats:{hp:55,atk:90,def:80,spa:50,spd:105,spe:96},role:'Setup Sweeper',moves:[{n:'Play Rough',t:'Fairy',c:'ph'},{n:'Shadow Claw',t:'Ghost',c:'ph'},{n:'Swords Dance',t:'Normal',c:'st'},{n:'Shadow Sneak',t:'Ghost',c:'ph'}],counters:['Corviknight','Metagross','Scizor'],tip:'Disguise guarantees one free hit or setup turn. Ghost/Fairy typing is excellent offensively. Swords Dance plus Shadow Sneak priority after setup is very threatening.'},
+{n:'Tapu Koko',id:785,g:7,types:['Electric','Fairy'],tier:'OU',usage:28,ability:'Electric Surge',sugN:'Timid',sugI:'Choice Specs',stats:{hp:70,atk:115,def:85,spa:95,spd:75,spe:130},role:'Electric Terrain Setter',moves:[{n:'Thunderbolt',t:'Electric',c:'sp'},{n:'Dazzling Gleam',t:'Fairy',c:'sp'},{n:'U-turn',t:'Bug',c:'ph'},{n:'Volt Switch',t:'Electric',c:'sp'}],counters:['Garchomp','Landorus-T','Blastoise'],tip:'Electric Surge sets Electric Terrain boosting Electric moves 30% and blocking sleep. Incredible 130 Speed. Electric/Fairy STAB is near-unresisted. Top tier momentum pivot.'},
+{n:'Marshadow',id:802,g:7,types:['Fighting','Ghost'],tier:'Uber',usage:30,ability:'Technician',sugN:'Jolly',sugI:'Life Orb',stats:{hp:90,atk:125,def:80,spa:90,spd:90,spe:125},role:'Shadow Sneak Sweeper',moves:[{n:'Spectral Thief',t:'Ghost',c:'ph'},{n:'Close Combat',t:'Fighting',c:'ph'},{n:'Shadow Sneak',t:'Ghost',c:'ph'},{n:'Rock Tomb',t:'Rock',c:'ph'}],counters:['Clefable','Togekiss','Yveltal'],tip:'Spectral Thief steals opponent stat boosts before attacking — unique and brutal. Shadow Sneak with Technician is a powerful priority move. Fighting/Ghost STAB hits nearly everything.'},
+{n:'Necrozma',id:800,g:7,types:['Psychic'],tier:'Uber',usage:35,ability:'Prism Armor',sugN:'Modest',sugI:'Choice Specs',stats:{hp:97,atk:107,def:101,spa:127,spd:89,spe:79},role:'Special Attacker',moves:[{n:'Prismatic Laser',t:'Psychic',c:'sp'},{n:'Power Gem',t:'Rock',c:'sp'},{n:'Focus Blast',t:'Fighting',c:'sp'},{n:'Shadow Ball',t:'Ghost',c:'sp'}],counters:['Tyranitar','Yveltal','Scizor'],tip:'Prism Armor reduces super-effective hits by 25%. Prismatic Laser is its signature devastating attack but requires recharge. Strong mixed bulk and high SpA.'},
+// GEN VIII
+{n:'Cinderace',id:815,g:8,types:['Fire'],tier:'OU',usage:39,ability:'Libero',sugN:'Jolly',sugI:'Choice Band',stats:{hp:80,atk:116,def:75,spa:65,spd:75,spe:119},role:'Fast Physical Attacker',moves:[{n:'Pyro Ball',t:'Fire',c:'ph'},{n:'U-turn',t:'Bug',c:'ph'},{n:'High Jump Kick',t:'Fighting',c:'ph'},{n:'Sucker Punch',t:'Dark',c:'ph'}],counters:['Blastoise','Rotom-W','Corviknight'],tip:'Libero changes type per move. Pyro Ball with Fire boost is devastating. Sucker Punch provides priority. Hard to revenge kill cleanly.'},
+{n:'Corviknight',id:823,g:8,types:['Flying','Steel'],tier:'OU',usage:43,ability:'Pressure',sugN:'Impish',sugI:'Leftovers',stats:{hp:98,atk:87,def:105,spa:53,spd:85,spe:67},role:'Defensive Wall',moves:[{n:'Body Press',t:'Fighting',c:'ph'},{n:'Brave Bird',t:'Flying',c:'ph'},{n:'Roost',t:'Flying',c:'st'},{n:'Defog',t:'Flying',c:'st'}],counters:['Charizard','Rotom-W','Urshifu'],tip:'Premier defensive wall. Defog clears all hazards. Body Press converts high Defense into offense. Immune to Poison and Ground, resists nine types.'},
+{n:'Hatterene',id:858,g:8,types:['Psychic','Fairy'],tier:'RU',usage:22,ability:'Magic Bounce',sugN:'Quiet',sugI:'Life Orb',stats:{hp:57,atk:90,def:95,spa:136,spd:103,spe:29},role:'Trick Room Ace',moves:[{n:'Dazzling Gleam',t:'Fairy',c:'sp'},{n:'Psyshock',t:'Psychic',c:'sp'},{n:'Trick Room',t:'Psychic',c:'st'},{n:'Mystical Fire',t:'Fire',c:'sp'}],counters:['Scizor','Gengar','Cinderace'],tip:'Queen of Trick Room. Magic Bounce deflects all status and hazards. Build your whole team around maximizing TR turns.'},
+{n:'Dragapult',id:887,g:8,types:['Dragon','Ghost'],tier:'OU',usage:48,ability:'Infiltrator',sugN:'Timid',sugI:'Choice Specs',stats:{hp:88,atk:120,def:75,spa:100,spd:75,spe:142},role:'Fastest Dragon',moves:[{n:'Shadow Ball',t:'Ghost',c:'sp'},{n:'Dragon Darts',t:'Dragon',c:'ph'},{n:'Fire Blast',t:'Fire',c:'sp'},{n:'U-turn',t:'Bug',c:'ph'}],counters:['Corviknight','Togekiss','Metagross'],tip:'Fastest Dragon in the game. Ghost+Dragon STAB resisted by almost nothing. Infiltrator bypasses screens. Always outspeeds other Dragons.'},
+{n:'Urshifu',id:892,g:8,types:['Fighting','Dark'],tier:'Uber',usage:61,ability:'Unseen Fist',sugN:'Jolly',sugI:'Choice Band',stats:{hp:100,atk:130,def:100,spa:63,spd:60,spe:97},role:'Critical Hit Breaker',moves:[{n:'Wicked Blow',t:'Dark',c:'ph'},{n:'Close Combat',t:'Fighting',c:'ph'},{n:'U-turn',t:'Bug',c:'ph'},{n:'Sucker Punch',t:'Dark',c:'ph'}],counters:['Togekiss','Hatterene','Corviknight'],tip:'Wicked Blow always criticals — bypasses boosts and burns. Unseen Fist bypasses Protect. Only Fairy types truly wall it.'},
+// GEN IX
+{n:'Meowscarada',id:908,g:9,types:['Grass','Dark'],tier:'OU',usage:30,ability:'Protean',sugN:'Jolly',sugI:'Choice Band',stats:{hp:76,atk:110,def:70,spa:81,spd:70,spe:123},role:'Fast Physical Attacker',moves:[{n:'Flower Trick',t:'Grass',c:'ph'},{n:'U-turn',t:'Bug',c:'ph'},{n:'Play Rough',t:'Fairy',c:'ph'},{n:'Knock Off',t:'Dark',c:'ph'}],counters:['Charizard','Corviknight','Togekiss'],tip:'Protean gives STAB on every move. Flower Trick always crits and can\'t miss. Fastest starter final evolution. Grass/Dark is solid offensive coverage.'},
+{n:'Skeledirge',id:911,g:9,types:['Fire','Ghost'],tier:'OU',usage:24,ability:'Unaware',sugN:'Bold',sugI:'Leftovers',stats:{hp:104,atk:75,def:100,spa:110,spd:75,spe:66},role:'Unaware Wall',moves:[{n:'Torch Song',t:'Fire',c:'sp'},{n:'Shadow Ball',t:'Ghost',c:'sp'},{n:'Will-O-Wisp',t:'Fire',c:'st'},{n:'Slack Off',t:'Normal',c:'st'}],counters:['Blastoise','Rotom-W','Tyranitar'],tip:'Unaware ignores all opponent stat boosts — shuts down setup sweepers completely. Torch Song boosts SpA each use. Slack Off provides reliable recovery. SR weak.'},
+{n:'Annihilape',id:979,g:9,types:['Fighting','Ghost'],tier:'OU',usage:26,ability:'Defiant',sugN:'Adamant',sugI:'Choice Band',stats:{hp:110,atk:115,def:80,spa:50,spd:90,spe:90},role:'Bulk Up Sweeper',moves:[{n:'Rage Fist',t:'Ghost',c:'ph'},{n:'Close Combat',t:'Fighting',c:'ph'},{n:'Bulk Up',t:'Fighting',c:'st'},{n:'Rest',t:'Normal',c:'st'}],counters:['Togekiss','Dragapult','Corviknight'],tip:'Rage Fist gains 50 BP per hit taken — brutal in Bulk Up sets. Rest + Bulk Up creates a very hard to break late-game wincon. Defiant punishes stat drops.'},
+{n:'Gholdengo',id:1000,g:9,types:['Steel','Ghost'],tier:'OU',usage:50,ability:'Good as Gold',sugN:'Timid',sugI:'Choice Specs',stats:{hp:87,atk:60,def:95,spa:133,spd:90,spe:84},role:'Good as Gold Attacker',moves:[{n:'Make It Rain',t:'Steel',c:'sp'},{n:'Shadow Ball',t:'Ghost',c:'sp'},{n:'Dazzling Gleam',t:'Fairy',c:'sp'},{n:'Nasty Plot',t:'Dark',c:'st'}],counters:['Landorus-T','Garchomp','Tyranitar'],tip:'Good as Gold blocks all status moves including Encore, Taunt, and Leech Seed. Make It Rain drops SpA after use — pairs with switch-ins. Steel/Ghost STAB is only resisted by Normal types.'},
+{n:'Flutter Mane',id:996,g:9,types:['Ghost','Fairy'],tier:'Uber',usage:55,ability:'Protosynthesis',sugN:'Timid',sugI:'Booster Energy',stats:{hp:55,atk:55,def:55,spa:135,spd:135,spe:135},role:'Paradox Sweeper',moves:[{n:'Moonblast',t:'Fairy',c:'sp'},{n:'Shadow Ball',t:'Ghost',c:'sp'},{n:'Thunderbolt',t:'Electric',c:'sp'},{n:'Calm Mind',t:'Psychic',c:'st'}],counters:['Metagross','Scizor','Gholdengo'],tip:'Paradox Pokemon with absurd 135/135/135 offensive and speed stats. Protosynthesis boosts the highest stat in Sun. Ghost/Fairy STAB together have near-perfect offensive coverage.'},
+{n:'Iron Bundle',id:1003,g:9,types:['Ice','Water'],tier:'Uber',usage:48,ability:'Quark Drive',sugN:'Timid',sugI:'Booster Energy',stats:{hp:56,atk:80,def:114,spa:124,spd:60,spe:136},role:'Paradox Sweeper',moves:[{n:'Freeze-Dry',t:'Ice',c:'sp'},{n:'Hydro Pump',t:'Water',c:'sp'},{n:'Focus Blast',t:'Fighting',c:'sp'},{n:'Flip Turn',t:'Water',c:'ph'}],counters:['Venusaur','Rotom-W','Tyranitar'],tip:'136 Speed with Electric Terrain or Booster Energy becomes 204 — nearly impossible to outspeed. Freeze-Dry uniquely hits Water types. Ice/Water STAB plus Focus Blast covers almost everything.'},
+// MISSING - referenced in counters
+{n:'Gengar',id:94,g:1,types:['Ghost','Poison'],tier:'OU',usage:31,ability:'Cursed Body',sugN:'Timid',sugI:'Choice Specs',stats:{hp:60,atk:65,def:60,spa:130,spd:75,spe:110},role:'Fast Special Attacker',moves:[{n:'Shadow Ball',t:'Ghost',c:'sp'},{n:'Sludge Bomb',t:'Poison',c:'sp'},{n:'Thunderbolt',t:'Electric',c:'sp'},{n:'Focus Blast',t:'Fighting',c:'sp'}],counters:['Tyranitar','Snorlax','Corviknight','Metagross'],tip:'Nuclear SpA plus top Speed. Shadow Ball shreds Psychic types. One strong hit ends it — pair with hazard removal support.'},
+{n:'Blissey',id:242,g:2,types:['Normal'],tier:'OU',usage:25,ability:'Natural Cure',sugN:'Calm',sugI:'Leftovers',stats:{hp:255,atk:10,def:10,spa:75,spd:135,spe:55},role:'Special Wall',moves:[{n:'Soft-Boiled',t:'Normal',c:'st'},{n:'Seismic Toss',t:'Normal',c:'ph'},{n:'Thunder Wave',t:'Electric',c:'st'},{n:'Stealth Rock',t:'Rock',c:'st'}],counters:['Lucario','Machamp','Heracross','Gengar'],tip:'255 HP and 135 SpD make it the ultimate special wall. Natural Cure heals status on switch. Seismic Toss deals consistent damage regardless of stats. Hard to break specially.'},
+{n:'Kyogre',id:382,g:3,types:['Water'],tier:'Uber',usage:60,ability:'Drizzle',sugN:'Modest',sugI:'Choice Specs',stats:{hp:100,atk:100,def:90,spa:150,spd:140,spe:90},role:'Rain Setter',moves:[{n:'Water Spout',t:'Water',c:'sp'},{n:'Origin Pulse',t:'Water',c:'sp'},{n:'Ice Beam',t:'Ice',c:'sp'},{n:'Thunder',t:'Electric',c:'sp'}],counters:['Venusaur','Reshiram','Zapdos','Goodra'],tip:'Sets permanent Rain with Drizzle. Water Spout at full HP is catastrophically powerful. 150 SpA means even resisted hits hurt. Defines every Ubers team built around it.'},
+{n:'Palkia',id:484,g:4,types:['Water','Dragon'],tier:'Uber',usage:44,ability:'Pressure',sugN:'Timid',sugI:'Choice Specs',stats:{hp:90,atk:120,def:100,spa:150,spd:120,spe:100},role:'Special Attacker',moves:[{n:'Spacial Rend',t:'Dragon',c:'sp'},{n:'Hydro Pump',t:'Water',c:'sp'},{n:'Fire Blast',t:'Fire',c:'sp'},{n:'Thunder',t:'Electric',c:'sp'}],counters:['Reshiram','Xerneas','Blissey','Kyogre'],tip:'Outstanding bulk plus exceptional SpA. Water/Dragon STAB hits almost everything. Spacial Rend high crit ratio. Only Fairy types and opposing Water/Dragons safely check it.'},
+{n:'Darkrai',id:491,g:4,types:['Dark'],tier:'Uber',usage:35,ability:'Bad Dreams',sugN:'Timid',sugI:'Choice Scarf',stats:{hp:70,atk:90,def:90,spa:135,spd:90,spe:125},role:'Dark Void Abuser',moves:[{n:'Dark Void',t:'Dark',c:'st'},{n:'Dark Pulse',t:'Dark',c:'sp'},{n:'Nasty Plot',t:'Dark',c:'st'},{n:'Ice Beam',t:'Ice',c:'sp'}],counters:['Xerneas','Gardevoir','Lugia','Clefable'],tip:'Dark Void puts targets to sleep with 80% accuracy. Bad Dreams deals 12.5% HP per turn. Nasty Plot plus Dark Pulse is a terrifying late-game wincon. Fairy types hard counter it.'},
+
+];
+
+// ═══════════════════════════════════════
+// ARCHETYPES
+// ═══════════════════════════════════════
+const ARCH=[
+  {n:'HYPER OFFENSE',c:'#A01020',win:'Overwhelm before the opponent sets up. Lead fast, U-turn for momentum, close with priority.',
+   test:t=>t.length&&avg(t,'spe')>95&&avg(t,'atk')>105,
+   tips:['Lead your fastest threat to immediately dictate pace','U-turn and Volt Switch maintain offensive momentum','Target defensive weak points before walls can set up','Use priority moves to punish weakened foes pivoting out']},
+  {n:'TRICK ROOM',c:'#6030C0',win:'Set Trick Room, then overwhelm with the slowest heaviest hitters your opponent cannot outspeed.',
+   test:t=>t.some(p=>p.moves.some(m=>m.n==='Trick Room')),
+   tips:['Set Trick Room on safest switch — lead your bulkiest setter','Pair with the slowest heaviest hitters available','Protect your setter above all else — it controls everything','Fairy and Psychic types check incoming fast threats']},
+  {n:'SAND OFFENSE',c:'#906010',win:'Set Sandstorm for chip damage, boost Rock SpD, then clean with setup sweepers.',
+   test:t=>t.some(p=>p.n==='Tyranitar'),
+   tips:['Set Sand early and protect Tyranitar throughout','Sand chip turns 3HKOs into 2HKOs — significant late game','Rock types get 50% SpD boost in Sand — exploit defensively','Finish with a sweeper that benefits from accumulated chip']},
+  {n:'STALL',c:'#205040',win:'Outlast the opponent by draining PP, spreading status, and stacking hazard chip over a long game.',
+   test:t=>t.length&&avg(t,'hp')+avg(t,'def')>250,
+   tips:['Rotate walls to drain opponent PP systematically','Spread burns and toxic — chip compounds significantly','Keep entry hazards up — every forced switch costs HP','Conserve PP carefully — stall games last 50–70 turns']},
+  {n:'BALANCED',c:'#2040A0',win:'Neutralize the opponent\'s win condition then pivot to your sweeper at the right moment.',
+   test:()=>true,
+   tips:['Identify win condition early — sweeper or attrition?','Pivot smartly for favorable matchups each turn','Mix offensive and defensive plays to stay unpredictable','Scout their archetype in the first five turns and adapt']},
+];
+function avg(t,s){return t.length?t.reduce((a,p)=>a+p.stats[s],0)/t.length:0;}
+function getArch(t){return ARCH.find(a=>a.test(t))||ARCH[4];}
+
+// ═══════════════════════════════════════
+// PICKER STATE
+// ═══════════════════════════════════════
+let pickerTarget=0;
+let currentGen='all';
+let currentSearch='';
+let selected={1:null,2:null};
+
+function openPicker(pn){
+  pickerTarget=pn;
+  document.getElementById('modal-title').textContent=`SELECT POKEMON — PLAYER ${pn}`;
+  document.getElementById('search-inp').value='';
+  currentSearch='';
+  currentGen='all';
+  document.querySelectorAll('.gen-btn').forEach(b=>{b.classList.remove('on');if(b.dataset.gen==='all')b.classList.add('on')});
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow='hidden';
+  renderGrid();
+  setTimeout(()=>document.getElementById('search-inp').focus(),100);
+}
+function closePicker(){
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+function closePickerIfBG(e){if(e.target===document.getElementById('modal-overlay'))closePicker();}
+function setGen(btn,gen){
+  document.querySelectorAll('.gen-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');currentGen=gen;renderGrid();
+}
+function filterGrid(){currentSearch=document.getElementById('search-inp').value.toLowerCase();renderGrid();}
+
+function renderGrid(){
+  const grid=document.getElementById('modal-grid');
+  let list=PKM.filter(p=>{
+    const genOk=currentGen==='all'||String(p.g)===currentGen;
+    const searchOk=!currentSearch||p.n.toLowerCase().includes(currentSearch);
+    return genOk&&searchOk;
+  });
+  if(!list.length){grid.innerHTML='<div class="poke-cell-empty">No Pokemon found</div>';return;}
+  grid.innerHTML='';
+  list.forEach(p=>{
+    const sel=selected[pickerTarget]&&selected[pickerTarget].n===p.n?'selected':'';
+    const cell=document.createElement('div');
+    cell.className='poke-cell '+sel;
+    cell.onclick=()=>selectPoke(p.n);
+    const sprWrap=makeGridSpriteEl(p);
+    const nameEl=document.createElement('div');nameEl.className='poke-cell-name';nameEl.textContent=p.n;
+    const idEl=document.createElement('div');idEl.className='poke-cell-id';idEl.textContent='#'+String(p.id).padStart(3,'0');
+    const typesEl=document.createElement('div');typesEl.className='poke-cell-types';
+    typesEl.innerHTML=p.types.map(t=>`<span class="poke-cell-type" style="background:${TCL[t]}">${t.slice(0,3).toUpperCase()}</span>`).join('');
+    cell.appendChild(sprWrap);cell.appendChild(nameEl);cell.appendChild(idEl);cell.appendChild(typesEl);
+    grid.appendChild(cell);
+  });
+}
+
+function selectPoke(name){
+  const p=PKM.find(x=>x.n===name);if(!p)return;
+  selected[pickerTarget]=p;
+  closePicker();
+  renderFighter(pickerTarget,p);
+}
+
+// ═══════════════════════════════════════
+// RENDER FIGHTER
+// ═══════════════════════════════════════
+function renderFighter(pn,p){
+  const fEl=document.getElementById('f'+pn);
+  fEl.className='fighter '+(pn===1?'p1a':'p2a');
+
+  // Picker button
+  const pbImg=document.getElementById('pb'+pn+'img');
+  pbImg.src=spriteSmall(p.id);pbImg.style.display='block';
+  document.getElementById('pb'+pn+'name').textContent=p.n;
+
+  // Tier + SR
+  const tb=document.getElementById('tier'+pn);
+  tb.textContent=p.tier;tb.style.cssText=`background:${TIER_C[p.tier]||'#333'};color:white`;
+  const srEl=document.getElementById('sr'+pn);
+  srEl.style.display=p.types.some(t=>SR_T.includes(t))?'inline-block':'none';
+
+  // Sprite
+  const cols=p.types.map(t=>TCL[t]);
+  const bg=cols.length>1?`linear-gradient(135deg,${cols[0]}28,${cols[1]}28)`:cols[0]+'20';
+  const sprEl=document.getElementById('spr'+pn);
+  sprEl.style.background=bg;
+  sprEl.innerHTML='';
+  const glowDiv=document.createElement('div');
+  glowDiv.className='sprite-glow';
+  glowDiv.style.background=cols.length>1?`linear-gradient(135deg,${cols[0]},${cols[1]})`:cols[0];
+  const sprWrap=makeSpriteEl(p,80);
+  sprWrap.style.cssText='position:relative;width:80px;height:80px;z-index:1;flex-shrink:0;';
+  const nameTag=document.createElement('div');
+  nameTag.className='sprite-name-tag';nameTag.textContent=p.n.toUpperCase();
+  sprEl.appendChild(glowDiv);sprEl.appendChild(sprWrap);sprEl.appendChild(nameTag);
+
+  // Usage
+  document.getElementById('usg'+pn).innerHTML=`<div class="usage-bar"><span class="usg-lbl">USAGE</span><div class="usg-trk"><div class="usg-fill" style="width:${p.usage}%"></div></div><span class="usg-pct">${p.usage}%</span></div>`;
+
+  // Types
+  document.getElementById('typ'+pn).innerHTML=
+    p.types.map(t=>`<span class="type-tag" style="background:${TCL[t]}">${t.toUpperCase()}</span>`).join('')+
+    `<span class="ab-chip">${p.ability}</span>`;
+
+  // Weaknesses
+  const wks=defEff(p.types);
+  const sorted=Object.entries(wks).sort((a,b)=>b[1]-a[1]);
+  if(sorted.length){
+    const chips=sorted.map(([t,m])=>{
+      const lbl=m===0?'0×':m<1?'½×':m>=4?'4×':'2×';
+      const cls=m===0?'imm':m<1?'res':'';
+      const bg=m===0?'#1a2030':m<1?'#2a3050':TCL[t];
+      return`<span class="wc ${cls}" style="background:${bg}" title="${t}: ${lbl}">${t.slice(0,3).toUpperCase()} ${lbl}</span>`;
+    }).join('');
+    document.getElementById('wk'+pn).innerHTML=`<div class="weak-row"><div class="weak-lbl">DAMAGE TAKEN BY TYPE</div><div class="weak-chips">${chips}</div></div>`;
+  } else document.getElementById('wk'+pn).innerHTML='';
+
+  // EV + stats
+  document.getElementById('evs'+pn).style.display='block';
+  document.getElementById('sts'+pn).style.display='block';
+  renderStats(pn,p);
+  const ns=document.getElementById('nat'+pn);
+  for(let i=0;i<ns.options.length;i++){if(ns.options[i].value===p.sugN){ns.selectedIndex=i;break;}}
+  updateSpdPill();hlNat(pn);
+}
+
+// ═══════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════
+function renderStats(pn,p){
+  const nat=document.getElementById('nat'+pn)?.value||'Hardy';
+  const el=document.getElementById('str'+pn);
+  el.innerHTML=['hp','atk','def','spa','spd','spe'].map(k=>{
+    const base=p.stats[k];const mod=withN(base,nat,k);
+    const pct=Math.min(100,mod/180*100);
+    const cls=mod>base?'up':mod<base?'dn':'';
+    return`<div class="stat-r"><div class="stat-k">${SL[k]}</div>
+      <div class="stat-trk"><div class="stat-fill" style="width:${pct}%;background:${SC[k]}"></div></div>
+      <input class="stat-v ${cls}" id="v${pn}${k}" type="number" value="${mod}" min="1" max="300"
+        onchange="onStatCh(${pn},'${k}',this.value)"></div>`;
+  }).join('');
+}
+function onStatCh(pn,k,val){
+  const pct=Math.min(100,(parseInt(val)||0)/180*100);
+  document.getElementById('v'+pn+k).closest('.stat-r').querySelector('.stat-fill').style.width=pct+'%';
+  updateSpdPill();
+}
+function onNat(pn){const p=selected[pn];if(p)renderStats(pn,p);updateSpdPill();hlNat(pn);}
+function hlNat(pn){
+  const n=NAT[document.getElementById('nat'+pn)?.value||'Hardy']||{};
+  ['hp','atk','def','spa','spd','spe'].forEach(s=>{
+    const el=document.getElementById('v'+pn+s);if(!el)return;
+    el.classList.remove('up','dn');
+    if(n.p===s)el.classList.add('up');if(n.m===s)el.classList.add('dn');
+  });
+}
+function gv(pn,s){const el=document.getElementById('v'+pn+s);return el?parseInt(el.value)||0:0;}
+
+function applyEV(pn,preset){
+  const ev=EV_P[preset];if(!ev||!selected[pn])return;
+  document.querySelectorAll(`#evs${pn} .ev-btn`).forEach((b,i)=>{
+    b.classList.remove('on');
+    if(['offensive','bulky-off','defensive','speed'][i]===preset)b.classList.add('on');
+  });
+  const nat=document.getElementById('nat'+pn).value;
+  const p=selected[pn];
+  ['hp','atk','def','spa','spd','spe'].forEach(k=>{
+    const el=document.getElementById('v'+pn+k);if(!el)return;
+    const mod=withN(p.stats[k],nat,k)+Math.floor((ev[k]||0)/4);
+    el.value=mod;
+    el.closest('.stat-r').querySelector('.stat-fill').style.width=Math.min(100,mod/180*100)+'%';
+  });
+  updateSpdPill();
+}
+
+function updateSpdPill(){
+  const p1=selected[1],p2=selected[2];
+  if(!p1||!p2){const e=document.getElementById('spdv');e.textContent='—';e.style.color='var(--t3)';return;}
+  const s1=gv(1,'spe')*itmS(document.getElementById('itm1')?.value||'None');
+  const s2=gv(2,'spe')*itmS(document.getElementById('itm2')?.value||'None');
+  const e=document.getElementById('spdv');
+  if(s1>s2){e.textContent=p1.n.toUpperCase()+'\nGOES FIRST';e.style.color='var(--r)';}
+  else if(s2>s1){e.textContent=p2.n.toUpperCase()+'\nGOES FIRST';e.style.color='var(--b2)';}
+  else{e.textContent='SPEED TIE';e.style.color='var(--y)';}
+}
+
+// ═══════════════════════════════════════
+// QUICK MATCH
+// ═══════════════════════════════════════
+function qm(n1,n2){
+  [[n1,1],[n2,2]].forEach(([nm,pn])=>{
+    const p=PKM.find(x=>x.n===nm);if(!p)return;
+    selected[pn]=p;renderFighter(pn,p);
+  });
+  document.getElementById('rw').classList.remove('vis');
+}
+
+// ═══════════════════════════════════════
+// FIELD CONDITIONS TOGGLE
+// ═══════════════════════════════════════
+function toggleField(){
+  const strip=document.getElementById('field-strip');
+  const arrow=document.getElementById('field-arrow');
+  strip.classList.toggle('open');
+  arrow.classList.toggle('open');
+}
+
+// ═══════════════════════════════════════
+// PREDICT
+// ═══════════════════════════════════════
+function doPredict(){
+  const p1=selected[1],p2=selected[2];
+  if(!p1||!p2){alert('Select both Pokemon first using the picker!');return;}
+  const n1=document.getElementById('nat1').value,n2=document.getElementById('nat2').value;
+  const i1=document.getElementById('itm1').value,i2=document.getElementById('itm2').value;
+  const weather=document.getElementById('fw').value,terrain=document.getElementById('ft').value;
+  const misc=document.getElementById('fm').value,boost=document.getElementById('fb_').value;
+  const s1={hp:gv(1,'hp'),atk:gv(1,'atk'),def:gv(1,'def'),spa:gv(1,'spa'),spd:gv(1,'spd'),spe:gv(1,'spe')};
+  const s2={hp:gv(2,'hp'),atk:gv(2,'atk'),def:gv(2,'def'),spa:gv(2,'spa'),spd:gv(2,'spd'),spe:gv(2,'spe')};
+  const eff1=atkEff(p1.types,p2.types),eff2=atkEff(p2.types,p1.types);
+  const spd1=s1.spe*itmS(i1),spd2=s2.spe*itmS(i2);
+  const ph1=s1.atk>=s1.spa,ph2=s2.atk>=s2.spa;
+  const d1=calcDmg(ph1?s1.atk:s1.spa,s2.hp,ph1?s2.def:s2.spd,n1,n2,ph1?'ph':'sp',i1,eff1,weather,terrain,boost,misc);
+  const d2=calcDmg(ph2?s2.atk:s2.spa,s1.hp,ph2?s1.def:s1.spd,n2,n1,ph2?'ph':'sp',i2,eff2,weather,terrain,'0','none');
+  const off1=(ph1?s1.atk:s1.spa)*itmA(i1,ph1?'ph':'sp');
+  const off2=(ph2?s2.atk:s2.spa)*itmA(i2,ph2?'ph':'sp');
+  const sc1=eff1*off1*Math.pow(spd1,.4)*(s1.hp*.5+s1.def*.25+s1.spd*.25);
+  const sc2=eff2*off2*Math.pow(spd2,.4)*(s2.hp*.5+s2.def*.25+s2.spd*.25);
+  let pct1=Math.round(sc1/(sc1+sc2)*100);
+  pct1=Math.max(14,Math.min(86,pct1));const pct2=100-pct1;
+
+  document.getElementById('wn1').textContent=p1.n.toUpperCase();
+  document.getElementById('wn2').textContent=p2.n.toUpperCase();
+  document.getElementById('wr').style.width=pct1+'%';
+  document.getElementById('wr').textContent=pct1+'%';
+  document.getElementById('wb').textContent=pct2+'%';
+  const diff=Math.abs(pct1-50),winner=pct1>pct2?p1.n:p2.n;
+  const vEl=document.getElementById('wv');
+  if(diff<9){vEl.textContent='Very close — could go either way';vEl.className='win-verdict close';}
+  else if(diff<22){vEl.textContent=winner.toUpperCase()+' likely wins this matchup';vEl.className='win-verdict likely';}
+  else{vEl.textContent=winner.toUpperCase()+' has strong advantage';vEl.className='win-verdict strong';}
+  const spdLabel=spd1>spd2?`${p1.n} outspeeds — ${Math.round(spd1)} vs ${Math.round(spd2)}`:spd2>spd1?`${p2.n} outspeeds — ${Math.round(spd2)} vs ${Math.round(spd1)}`:`Speed tie at ${Math.round(spd1)}`;
+  document.getElementById('spdnote').textContent='⚡ '+spdLabel;
+
+  [1,2].forEach(pn=>{
+    const atk=pn===1?p1:p2,def=pn===1?p2:p1;
+    const d=pn===1?d1:d2,eff=pn===1?eff1:eff2;
+    document.getElementById('rcn'+pn).textContent=atk.n.toUpperCase();
+    document.getElementById('rb'+pn).textContent=atk.role.toUpperCase();
+    const cls=d.max>=100?'ohko':d.max>=50?'twohko':'safe';
+    const tag=d.max>=100?'OHKO RANGE':d.max>=50?'2HKO RANGE':'SURVIVES';
+    document.getElementById('dd'+pn).textContent=atk.n+' attacks '+def.n;
+    document.getElementById('dp'+pn).textContent=d.min+'–'+d.max+'% HP';
+    document.getElementById('dp'+pn).className='dmg-pct '+cls;
+    document.getElementById('df'+pn).style.width=Math.min(100,d.max)+'%';
+    document.getElementById('df'+pn).style.background=d.max>=100?'var(--r)':d.max>=50?'var(--o)':'var(--g)';
+    document.getElementById('dv'+pn).textContent=tag;
+    document.getElementById('dv'+pn).className='dmg-pill '+cls;
+    document.getElementById('dn'+pn).textContent=pn===1&&misc==='sr'&&SR_T.some(t=>def.types.includes(t))?'Note: SR deals 25%+ HP on entry':'';
+    const advLines=[];
+    if(eff>1)advLines.push({i:'⚡',t:`${eff}× type advantage`});
+    else if(eff<1&&eff>0)advLines.push({i:'🛡',t:'Type resisted — reduced damage'});
+    if(gv(pn,'spe')>gv(pn===1?2:1,'spe'))advLines.push({i:'💨',t:'Faster — moves first'});
+    const aB=gv(pn,'hp')+gv(pn,'def')+gv(pn,'spd'),dB=gv(pn===1?2:1,'hp')+gv(pn===1?2:1,'def')+gv(pn===1?2:1,'spd');
+    if(aB>dB)advLines.push({i:'🛡',t:'Higher total bulk'});
+    if(Math.max(gv(pn,'atk'),gv(pn,'spa'))>Math.max(gv(pn===1?2:1,'atk'),gv(pn===1?2:1,'spa')))advLines.push({i:'⚔',t:'Higher raw offensive stat'});
+    if(atk.ability==='Levitate')advLines.push({i:'✓',t:'Levitate: Ground immune'});
+    if(atk.ability==='Magic Guard')advLines.push({i:'✓',t:'Magic Guard: no passive damage'});
+    if(atk.ability==='Magic Bounce')advLines.push({i:'✓',t:'Magic Bounce: reflects status'});
+    if(!advLines.length)advLines.push({i:'≈',t:'Roughly even — edge goes to play'});
+    document.getElementById('adv'+pn).innerHTML=advLines.map(l=>`<div class="adv-line"><span class="adv-i">${l.i}</span>${l.t}</div>`).join('');
+    document.getElementById('mv'+pn).innerHTML=atk.moves.map(m=>`<span class="move-tag" style="background:${TCL[m.t]||'#444'}">${m.n}</span>`).join('');
+    const ctrs=atk.counters||[];
+    document.getElementById('cc'+pn).innerHTML=ctrs.length?ctrs.map(nm=>{
+      const cp=PKM.find(x=>x.n===nm);
+      if(!cp)return`<div class="cc-row"><span class="cc-nm">${nm}</span></div>`;
+      const e=atkEff(cp.types,atk.types);
+      const why=e>1?`${e}× adv.`:cp.stats.hp+cp.stats.def+cp.stats.spd>300?'Bulk wall':cp.stats.spe>atk.stats.spe?'Faster':'Offensive check';
+      return`<div class="cc-row"><span class="cc-nm">${nm}</span><span class="cc-why">${why}</span></div>`;
+    }).join(''):'<div style="font-size:16px;color:var(--t3);padding:4px 0">No strong counters in dataset</div>';
+    const mySpd=gv(pn,'spe');
+    const bench=PKM.filter(x=>x.n!==atk.n).sort((a,b)=>Math.abs(a.stats.spe-atk.stats.spe)-Math.abs(b.stats.spe-atk.stats.spe)).slice(0,6);
+    document.getElementById('spt'+pn).innerHTML=bench.map(b=>{
+      const cls=mySpd>b.stats.spe?'beat':mySpd<b.stats.spe?'lose':'tie';
+      const lbl=cls==='beat'?'outspeeds':cls==='lose'?'slower than':'ties';
+      return`<div class="spt-row"><div class="spt-dot ${cls}"></div><div class="spt-nm">${b.n}</div><div class="spt-st">${lbl} (${b.stats.spe})</div></div>`;
+    }).join('');
+    document.getElementById('tip'+pn).textContent=atk.tip;
+  });
+
+  const rw=document.getElementById('rw');rw.classList.add('vis');
+  setTimeout(()=>rw.scrollIntoView({behavior:'smooth',block:'nearest'}),80);
+}
+
+function resetBattle(){
+  [1,2].forEach(n=>{
+    selected[n]=null;
+    document.getElementById('f'+n).className='fighter';
+    document.getElementById('pb'+n+'img').style.display='none';
+    document.getElementById('pb'+n+'name').textContent='— Choose Pokemon —';
+    const rSpr=document.getElementById('spr'+n);rSpr.innerHTML='';rSpr.insertAdjacentHTML('afterbegin','<div class="sprite-empty"><div class="se-ball"></div><div class="se-lbl">SELECT</div></div>');
+    document.getElementById('spr'+n).style.background='var(--bg3)';
+    ['usg','typ','wk'].forEach(id=>document.getElementById(id+n).innerHTML='');
+    document.getElementById('evs'+n).style.display='none';
+    document.getElementById('sts'+n).style.display='none';
+    document.getElementById('tier'+n).textContent='—';
+    document.getElementById('tier'+n).style.cssText='background:var(--bg4);color:var(--t3)';
+    document.getElementById('sr'+n).style.display='none';
+  });
+  document.getElementById('rw').classList.remove('vis');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ═══════════════════════════════════════
+// TEAM TAB
+// ═══════════════════════════════════════
+(function initTeams(){
+  [1,2].forEach(tn=>{
+    const c=document.getElementById('ts'+tn);
+    for(let i=1;i<=6;i++){
+      const row=document.createElement('div');row.className='tslot';
+      const num=document.createElement('span');num.className='tslot-n';num.textContent=i;
+      const sel=document.createElement('select');sel.className='tslot-sel';sel.id=`tt${tn}s${i}`;
+      sel.innerHTML='<option value="">— empty —</option>';
+      PKM.forEach(p=>{const o=document.createElement('option');o.value=p.n;o.textContent=p.n;sel.appendChild(o)});
+      sel.addEventListener('change',()=>{
+        sel.classList.toggle('filled',!!sel.value);
+        countTeam(tn);
+        const ti=row.querySelector('.tslot-types');ti.innerHTML='';
+        if(sel.value){const pk=PKM.find(p=>p.n===sel.value);if(pk)pk.types.forEach(t=>{const s=document.createElement('span');s.className='ttype';s.style.background=TCL[t];s.textContent=t.slice(0,3).toUpperCase();ti.appendChild(s);})}
+      });
+      const ti=document.createElement('div');ti.className='tslot-types';
+      row.appendChild(num);row.appendChild(sel);row.appendChild(ti);c.appendChild(row);
+    }
+  });
+})();
+function countTeam(tn){let n=0;for(let i=1;i<=6;i++){if(document.getElementById(`tt${tn}s${i}`)?.value)n++;}document.getElementById('tc'+tn).textContent=n+' / 6';}
+function getTeam(tn){const t=[];for(let i=1;i<=6;i++){const v=document.getElementById(`tt${tn}s${i}`)?.value;if(v){const p=PKM.find(x=>x.n===v);if(p)t.push(p)}}return t;}
+
+function doTeamAnalysis(){
+  const t1=getTeam(1),t2=getTeam(2);
+  if(!t1.length&&!t2.length){alert('Add Pokemon to at least one team!');return;}
+  const statDefs=[{k:'spe',l:'SPE'},{k:'atk',l:'ATK'},{k:'spa',l:'SPA'},{k:'def',l:'DEF'},{k:'hp',l:'HP'}];
+  document.getElementById('statcmp').innerHTML=statDefs.map(({k,l})=>{
+    const a=t1.length?Math.round(avg(t1,k)):0,b=t2.length?Math.round(avg(t2,k)):0;
+    const tot=Math.max(a+b,1),pa=Math.round(a/tot*100);
+    return`<div class="sv-row"><div class="sv-nms"><span class="sv-n" style="color:var(--r)">T1: ${a}</span><span class="sv-n" style="color:var(--t3)">${l}</span><span class="sv-n" style="color:var(--b2)">T2: ${b}</span></div><div class="sv-bar"><div class="sv-r" style="width:${pa}%"></div><div class="sv-b"></div></div></div>`;
+  }).join('');
+
+  function getCov(t){
+    const c=new Set();
+    const MM={Earthquake:'Ground',Thunderbolt:'Electric','Stone Edge':'Rock','Ice Beam':'Ice','Ice Punch':'Ice','Ice Fang':'Ice',Flamethrower:'Fire','Fire Punch':'Fire',Flare_Blitz:'Fire','Shadow Ball':'Ghost','Dragon Claw':'Dragon','Dragon Pulse':'Dragon',Moonblast:'Fairy','Dazzling Gleam':'Fairy','Flash Cannon':'Steel','Close Combat':'Fighting','Aura Sphere':'Fighting','Bullet Punch':'Steel','Meteor Mash':'Steel',Crunch:'Dark','Focus Blast':'Fighting','Sludge Bomb':'Poison','Air Slash':'Flying','Hydro Pump':'Water',Waterfall:'Water','Giga Drain':'Grass','Mystical Fire':'Fire'};
+    t.forEach(p=>{p.types.forEach(x=>c.add(x));p.moves.forEach(m=>{if(MM[m.n])c.add(MM[m.n]);})});
+    return c;
+  }
+  function getHoles(t){
+    const wm=new Map();
+    t.forEach(p=>{const w=defEff(p.types);Object.entries(w).forEach(([tp,m])=>{if(m>=2)wm.set(tp,(wm.get(tp)||0)+m);})});
+    return[...wm.entries()].sort((a,b)=>b[1]-a[1]).slice(0,4).filter(([,v])=>v>=3).map(([tp])=>tp);
+  }
+
+  [1,2].forEach(tn=>{
+    const t=tn===1?t1:t2;
+    if(!t.length){['wc','arch','cov','gaps','stips'].forEach(id=>document.getElementById(id+tn).innerHTML='<div style="font-size:16px;color:var(--t3);padding:6px 0">No Pokemon selected</div>');return;}
+    const arch=getArch(t);
+    document.getElementById('wc'+tn).innerHTML=`<div class="wc-box"><div class="wc-arch">${arch.n}</div><div class="wc-body">${arch.win}</div></div>`;
+    const rc={Speed:'#E060A0',Attack:'#E09040',Bulk:'#60C060',Special:'#6080E0'};
+    const roles={Speed:t.filter(p=>p.stats.spe>100).length,Attack:t.filter(p=>p.stats.atk>100).length,Bulk:t.filter(p=>p.stats.hp+p.stats.def>175).length,Special:t.filter(p=>p.stats.spa>100).length};
+    document.getElementById('arch'+tn).innerHTML=`<div class="arch-banner" style="background:${arch.c}">${arch.n}</div>`+
+      Object.entries(roles).map(([r,n])=>`<div class="rf-row"><div class="rf-lbl">${r}</div><div class="rf-trk"><div class="rf-fill" style="width:${Math.round(n/t.length*100)}%;background:${rc[r]}"></div></div><div class="rf-n">${n}/${t.length}</div></div>`).join('');
+    const cov=getCov(t),holes=getHoles(t);
+    document.getElementById('cov'+tn).innerHTML=`<div class="cov-grid">${ALL_T.map(tp=>`<div class="cov-dot ${cov.has(tp)?holes.includes(tp)?'hole':'':'miss'}" style="background:${cov.has(tp)?TCL[tp]:'transparent'}" title="${tp}">${tp.slice(0,3).toUpperCase()}</div>`).join('')}</div><div class="cov-stat">${cov.size}/${ALL_T.length} types covered</div>${holes.length?'<div style="font-family:var(--fh);font-size:5.5px;color:var(--r);margin-bottom:4px;letter-spacing:.3px">HOLES:</div>'+holes.map(h=>`<span class="hole-p">${h}</span>`).join(''):'<span style="font-family:var(--fh);font-size:5px;color:var(--g)">✓ Strong coverage</span>'}`;
+    const hasR=t.some(p=>p.moves.some(m=>m.n==='Stealth Rock'));
+    const hasD=t.some(p=>p.moves.some(m=>['Rapid Spin','Defog'].includes(m.n)));
+    const hasP=t.some(p=>p.moves.some(m=>['U-turn','Volt Switch'].includes(m.n)));
+    const hasPr=t.some(p=>p.moves.some(m=>['Bullet Punch','Extreme Speed','Sucker Punch','Shadow Sneak'].includes(m.n)));
+    const hasS=t.some(p=>p.moves.some(m=>['Swords Dance','Dragon Dance','Calm Mind','Nasty Plot','Quiver Dance','Bulk Up'].includes(m.n)));
+    const checks=[[hasR,'Stealth Rock setter'],[hasD,'Rapid Spin / Defog'],[hasP,'U-turn / Volt Switch pivot'],[hasPr,'Priority move'],[hasS,'Setup move']];
+    document.getElementById('gaps'+tn).innerHTML=checks.map(([ok,msg])=>ok?`<div class="gap-ok">✓ Has ${msg}</div>`:`<div class="gap-warn"><div class="gap-icon">⚠</div>Missing ${msg}</div>`).join('');
+    document.getElementById('stips'+tn).innerHTML=arch.tips.map(tip=>`<div class="strat-tip">${tip}</div>`).join('');
+  });
+  function toPS(t,nm){
+    if(!t.length)return'';
+    return`=== ${nm} ===\n\n`+t.map(p=>`${p.n} @ ${p.sugI||'No Item'}\nAbility: ${p.ability}\nNature: ${p.sugN}\nEVs: 252 Atk / 4 Def / 252 Spe\n${p.moves.map(m=>'- '+m.n).join('\n')}`).join('\n\n');
+  }
+  document.getElementById('expc').textContent=[toPS(t1,'Team 1'),toPS(t2,'Team 2')].filter(Boolean).join('\n\n');
+  const ta=document.getElementById('tan');ta.classList.add('vis');
+  setTimeout(()=>ta.scrollIntoView({behavior:'smooth',block:'nearest'}),80);
+}
+function toggleExport(){document.getElementById('expw').classList.toggle('vis');}
+function copyExport(){
+  navigator.clipboard.writeText(document.getElementById('expc').textContent)
+    .then(()=>{const b=event.target;b.textContent='✓ Copied!';setTimeout(()=>b.textContent='⧉ Copy to clipboard',2200);});
+}
+function resetTeams(){
+  for(let t=1;t<=2;t++){
+    for(let i=1;i<=6;i++){const s=document.getElementById(`tt${t}s${i}`);if(s){s.value='';s.classList.remove('filled');}}
+    countTeam(t);
+    document.querySelectorAll(`#ts${t} .tslot-types`).forEach(x=>x.innerHTML='');
+  }
+  document.getElementById('tan').classList.remove('vis');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// Tabs
+document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  document.getElementById('tab-'+b.dataset.tab).classList.add('active');
+}));
+// Close picker on Escape
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closePicker();});
+</script>
+</body>
+</html>
